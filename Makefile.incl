@@ -1,0 +1,24 @@
+# ./Makefile.incl
+
+TOPDIR := $(dir $(CURDIR)/$(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)))
+
+BUILD_CPU_ASM =
+
+INCL    = -I.
+OPTZ    = -g
+COPTS   = -Wall $(BUILD_CPU_GCC) $(INCL) $(OPTZ)
+CXXOPTS = -Wall $(BUILD_CPU_GCC) $(INCL) $(OPTZ)
+LDOPTS  =
+
+GCC     = gcc
+GXX	= g++
+AR      = ar
+LD      = ld
+
+.c.o:
+	$(GCC) -c $(COPTS) $< -o $*.o
+
+.cpp.o:
+	$(GXX) -c $(CXXOPTS) $< -o $*.o
+
+# End ./Makefile.incl
