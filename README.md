@@ -31,11 +31,14 @@ to clobber and rebuild:
 You can get help from the test program:
 
     $ ./posix -h
-    Usage: posix [-R [-W]] [-c:] [-p:] [-b:] [-d:] [-j:] [-P:] [-r] [-o:] [-D:] [-A:] [-v] [-h]
-    where
+    Usage: posix [-options..] [-v] [-h]
+    where options include:
     	-R		Begin with ESP8266 reset
-    	-W		Wait for WIFI CONNECT + GOT IP
-    	-c host		Host to connect to
+    	-W		Wait for WIFI CONNECT + GOT IP (with -R)
+    	-c host		TCP host to connect to
+    	-u host		UDP host to send/recv with
+    	-U port		Local UDP port (else assigned)
+    	-Z secs		Wait seconds for a UDP response
     	-p port		Default is port 80
     	-d device	Serial device pathname
     	-j wifi_name	WIFI network to join
@@ -48,6 +51,9 @@ You can get help from the test program:
     	-L port		Listen on port
     	-v		Verbose output mode
     	-h		This help info.
+
+    Options -c (TCP) and -u (UDP) are mutually exclusive.
+    When neither -j or -r used, -r is assumed.
 
 When neither -j or -r used, -r is assumed. The option order is
 insignificant, but the order that they are acted upon is as follows:
@@ -70,6 +76,8 @@ insignificant, but the order that they are acted upon is as follows:
                         my ESP-07 device)
 
     3. COMMUNICATION TESTS
+        TCP:
+
         -c host -p port Connect to host host, at port port, and 
                         send a "GET /CRLF" command to it, saving
                         the received text to file given by the 
@@ -81,6 +89,17 @@ insignificant, but the order that they are acted upon is as follows:
                         telnet to it or use netcat:
 
                         pwd | nc 192.168.0.73 80
+
+        UDP:
+
+        -u host -p port Create a UDP socket for communication to
+                        host and port. 
+        -U port         Specifies the local port for UDP, so that
+                        UDP packets can be back to the ESP at a
+                        known port.
+        -Z seconds      Specifies how long the UDP test should
+                        wait for incoming datagrams before exiting
+                        the test.
 
 HARDWARE:
 ---------
@@ -187,6 +206,28 @@ if the return value is -1, there has been an error.
 CLOSING A SOCKET:
 
     esp.close(sock);
+
+UDP SOCKETS:
+
+    int sock = esp.udp_socket(const char *host,int port,recv_func_t rx_cb[,int local_port]);
+
+This creates a socket that will send UDP datagrams to the host and port
+specified. If you are interested in receiving datagrams, you will also
+want to specify the local_port argument (the default has the local port
+randomly assigned).
+
+Some ESP devices apparently support switching different destination IP
+addresses (though I did not see the  possibility of changing ports). This
+is done by adding the IP parameter in:
+
+    AT+CIPSEND=id,"address",bytes
+
+The esp.write() method supports it, but my ESP-07 did not like it:
+
+    esp.write(int sock,const char *data,int bytes[,const char *new_udp_address]);
+
+Your best bet is to simply to close and reopen sessions, as you need to
+send.
 
 THE esp.receive() METHOD:
 
@@ -310,9 +351,14 @@ working first.
 
 UNFINISHED BUSINESS:
 
-    - Currently lacking UDP support
     - Ability to receive a list of WIFI stations
     - and sundry
+
+TESTING WITH OSX nc COMMAND:
+
+For some reason, I receive four datagrams with 'X' ahead of the datagram
+I wanted to send.  I know that this originates with nc (not ESP) on
+OSX. I don't know yet if this also happens from nc on Linux.
 
 FINAL NOTE:
 
