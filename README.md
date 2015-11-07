@@ -340,9 +340,6 @@ Use ^C to exit the program.
     Opened socket 0
     Sent 7 bytes
     Closed sock 0 ok
-    DHCP off.
-    DHCP on.
-    LISTENING ON PORT 80
     Listening on port 80..
     ACCEPTED server connect on sock = 0
     Server byte = '/' 2F
