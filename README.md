@@ -88,8 +88,7 @@ HARDWARE:
 There seems to be a lot of people struggling with loss of data on
 receive from the ESP8266. You MUST have hardware flow control in place
 to make this communicate reliably. The loss of a single byte of data,
-will lockup the interface because it may wait forever for a response
-that does not arrive. 
+will lockup the interface because it may wait forever for a response.
 
 Use a 3.3V FTDI adapter only (you can cheat if you use a voltage 
 divider). The ESP8299 will not tolerate 5V signals.
