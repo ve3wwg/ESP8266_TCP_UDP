@@ -33,24 +33,24 @@ You can get help from the test program:
     $ ./posix -h
     Usage: posix [-options..] [-v] [-h]
     where options include:
-    	-R		Begin with ESP8266 reset
-    	-W		Wait for WIFI CONNECT + GOT IP (with -R)
-    	-c host		TCP host to connect to
-    	-u host		UDP host to send/recv with
-    	-U port		Local UDP port (else assigned)
-    	-Z secs		Wait seconds for a UDP response
-    	-p port		Default is port 80
-    	-d device	Serial device pathname
-    	-j wifi_name	WIFI network to join
-    	-P password	WIFI passord (for -j)
-    	-r		Resume connection to last used WIFI
-    	-o file		Send received output to file (default is stdout)
-    	-D {0|1}	Disable/Enable DHCP
-    	-A ipaddr	Set AP IP Address
-    	-T secs		Set new timeout
-    	-L port		Listen on port
-    	-v		Verbose output mode
-    	-h		This help info.
+        -R              Begin with ESP8266 reset
+        -W              Wait for WIFI CONNECT + GOT IP (with -R)
+        -c host         TCP host to connect to
+        -u host         UDP host to send/recv with
+        -U port         Local UDP port (else assigned)
+        -Z secs         Wait seconds for a UDP response
+        -p port         Default is port 80
+        -d device       Serial device pathname
+        -j wifi_name    WIFI network to join
+        -P password     WIFI passord (for -j)
+        -r              Resume connection to last used WIFI
+        -o file         Send received output to file (default is stdout)
+        -D {0|1}        Disable/Enable DHCP
+        -A ipaddr       Set AP IP Address
+        -T secs         Set new timeout
+        -L port         Listen on port
+        -v              Verbose output mode
+        -h              This help info.
 
     Options -c (TCP) and -u (UDP) are mutually exclusive.
     When neither -j or -r used, -r is assumed.
