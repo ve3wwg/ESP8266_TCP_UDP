@@ -20,7 +20,15 @@ out the library before involving the MCU. First make the project:
 
 $ make 
 
-and then invoke the test program:
+Use target clobber, if you made changes and you need to rebuild:
+
+$ make clobber
+
+to clobber and rebuild:
+
+$ make clobber all
+
+You can get help from the test program:
 
 $ ./posix -h
 Usage: posix [-R [-W]] [-c:] [-p:] [-b:] [-d:] [-j:] [-P:] [-r] [-o:] [-D:] [-A:] [-v] [-h]
