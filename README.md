@@ -106,7 +106,7 @@ divider). The ESP8299 will not tolerate 5V signals.
 Notes:
 ------
     1. Some usb serial adapters may label this connection as DTR.
-    2. If your serial adapter runs on either 5V 3.3V by jumper,
+    2. If your serial adapter runs on either 5V or 3.3V by jumper,
        you may find that you need a 1K pull-down resistor between 
        CTS and ground (this was necessary on mine to bring the
        CTS low voltage below 0.6V).
