@@ -267,6 +267,15 @@ call to realloc(). The buffer allocated never exceeds 80 bytes.
 Any other temporary buffers needed are created on the stack and released
 upon return. These are small and less than 32 bytes in size.
 
+If you are extremely strapped for RAM, you can invoke:
+
+    esp.release();
+
+at strategic places in the code. This will release any disposable
+buffers, like the internal one holding the ESP version information (this
+may save 40 to 80 bytes of heap). If the version info is requested again
+for example, a new internal buffer will be created when required.
+
 To avoid the need to pull in sprintf/snprintf library code, the esp8266.cpp
 module provides its own efficient integer to string conversion routine:
 
