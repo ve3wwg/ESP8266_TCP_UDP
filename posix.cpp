@@ -11,6 +11,7 @@
 #include <string.h>
 #include <assert.h>
 #include <termios.h>
+#include <time.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/ioctl.h>
@@ -26,6 +27,9 @@ static const char *opt_password = 0;
 static bool opt_resume = false;
 static int opt_baudrate = 115200;
 static const char *opt_connect = 0;
+static const char *opt_udp = 0;
+static int opt_uport = -1;
+static int opt_Z = -1;
 static int opt_port = 80;
 static const char *opt_output = 0;
 static const char *opt_dhcp = 0;
@@ -109,10 +113,24 @@ static void
 rx_callback(int sock,int byte) {
 
 	if ( byte == -1 ) {
-		printf("Remote closed socket %d\n",sock);
+		printf("<Remote closed socket %d>\n",sock);
 	} else	{
 		fputc(byte,output);
 		fflush(output);
+	}
+}
+
+//////////////////////////////////////////////////////////////////////
+// UDP datagram packet byte
+//////////////////////////////////////////////////////////////////////
+
+static void
+udp_rx(int sock,int byte) {
+
+	if ( byte == -1 ) {
+		printf("<End of UDP packet>\n");
+	} else	{
+		printf("UDP byte '%c' %02X\n",byte,byte);
 	}
 }
 
@@ -168,11 +186,14 @@ usage(const char *cmd) {
 		cmd = cp + 1;
 
 	fprintf(stderr,
-		"Usage: %s [-R [-W]] [-c:] [-p:] [-b:] [-d:] [-j:] [-P:] [-r] [-o:] [-D:] [-A:] [-v] [-h]\n"
-		"where\n"
+		"Usage: %s [-options..] [-v] [-h]\n"
+		"where options include:\n"
 		"\t-R\t\tBegin with ESP8266 reset\n"
-		"\t-W\t\tWait for WIFI CONNECT + GOT IP\n"
-		"\t-c host\t\tHost to connect to\n"
+		"\t-W\t\tWait for WIFI CONNECT + GOT IP (with -R)\n"
+		"\t-c host\t\tTCP host to connect to\n"
+		"\t-u host\t\tUDP host to send/recv with\n"
+		"\t-U port\t\tLocal UDP port (else assigned)\n"
+		"\t-Z secs\t\tWait seconds for a UDP response\n"
 		"\t-p port\t\tDefault is port 80\n"
 		"\t-d device\tSerial device pathname\n"
 		"\t-j wifi_name\tWIFI network to join\n"
@@ -186,6 +207,7 @@ usage(const char *cmd) {
 		"\t-v\t\tVerbose output mode\n"
 		"\t-h\t\tThis help info.\n"
 		"\n"
+		"Options -c (TCP) and -u (UDP) are mutually exclusive.\n"
 		"When neither -j or -r used, -r is assumed.\n",
 		cmd);
 	exit(0);
@@ -197,7 +219,7 @@ usage(const char *cmd) {
 
 int
 main(int argc,char **argv) {
-	static const char options[] = ":RWc:P:b:d:j:p:ro:D:A:S:T:L:vh";
+	static const char options[] = ":RWc:u:U:P:b:d:j:p:ro:D:A:S:T:L:Z:vh";
 	int rc, optch, er = 0;
 
 	//////////////////////////////////////////////////////////////
@@ -217,9 +239,17 @@ main(int argc,char **argv) {
 			break;
 		case 'c':
 			opt_connect = optarg;
+			opt_udp = 0;
+			break;
+		case 'u':
+			opt_udp = optarg;
+			opt_connect = 0;
 			break;
 		case 'p':
 			opt_port = atoi(optarg);
+			break;
+		case 'U':
+			opt_uport = atoi(optarg);
 			break;
 		case 'd':
 			opt_device = optarg;
@@ -254,6 +284,9 @@ main(int argc,char **argv) {
 			break;
 		case 'L':
 			opt_listen = atoi(optarg);
+			break;
+		case 'Z':
+			opt_Z = atoi(optarg);
 			break;
 		case 'v':
 			opt_verbose = true;
@@ -411,7 +444,6 @@ main(int argc,char **argv) {
 	printf("Timeout = %d\n",timeout);
 
 	if ( opt_timeout >= 0 ) {
-puts("Setting TIMEOUT");
 		ok = esp.set_timeout(opt_timeout);
 		if ( !ok )
 			fprintf(stderr,"Setting timeout -T %d failed.\n",opt_timeout);
@@ -433,11 +465,10 @@ puts("Setting TIMEOUT");
 			ok ? "ok" : "FAILED");
 	}
 
-	//////////////////////////////////////////////////////////////
-	// If -c option given, connect to that host
-	//////////////////////////////////////////////////////////////
-
 	if ( opt_connect ) {
+		//////////////////////////////////////////////////////
+		// TCP test (options -c and -p)
+		//////////////////////////////////////////////////////
 		if ( opt_verbose )
 			printf("Connecting to %s\n",opt_connect);
 
@@ -465,6 +496,53 @@ puts("Setting TIMEOUT");
 		} else if ( opt_verbose ) {
 			printf("Closed sock %d ok\n",sock);
 		}
+	} else if ( opt_udp ) {
+		//////////////////////////////////////////////////////
+		// UDP test (options -u -p -U and -Z)
+		//////////////////////////////////////////////////////
+		char buf[256];
+
+		sprintf(buf,"This UDP datagram sent from process ID %ld\r\n",long(getpid()));
+		size_t buflen = strlen(buf);
+
+		int sock = esp.udp_socket(opt_udp,opt_port,udp_rx,opt_uport);
+		if ( sock < 0 ) {
+			fprintf(stderr,"%s: Creating UDP socket for host %s port %d\n",
+				esp.strerror(),
+				opt_udp,opt_port);
+			exit(13);
+		}		
+
+		if ( opt_verbose )
+			printf("Opened UDP socket %d\n",sock);
+
+		int sent = esp.write(sock,buf,buflen);
+		if ( opt_verbose )
+			printf("Sent %d bytes\n",sent);
+
+		if ( opt_Z > 0 ) {
+			//////////////////////////////////////////////
+			// UDP receive test (wait -Z seconds)
+			//////////////////////////////////////////////
+
+			printf("Waiting %d seconds for a UDP packet\n",opt_Z);
+			time_t time0 = time(0);
+
+			do	{
+				esp.receive();
+			} while ( time(0) - time0 < opt_Z );
+
+			printf("End UDP wait period.\n");
+		}
+
+		ok = esp.close(sock);
+		if ( !ok ) {
+			fprintf(stderr,"%s: close socket %d\n",
+				esp.strerror(),
+				sock);
+			exit(13);
+		} else if ( opt_verbose )
+			printf("Closed sock %d ok\n",sock);
 	}
 
 	//////////////////////////////////////////////////////////////
