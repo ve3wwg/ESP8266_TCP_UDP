@@ -292,9 +292,10 @@ returned string, since the conversion starts at the end of the buffer
 (temp[15] holds the null byte) and works backwards. The returned pointer
 provides the location of the string's first byte within the buffer.
 
-When compiled under Mac OSX, the esp8266.o module is about 17k in size.
-I expect a similar code size for AVR or ARM use. The class was designed
-to use flash over RAM, whenever there was a choice.
+When compiled under Mac OSX, the esp8266.o module is about 17k in size
+(compiled with -Os and no debug). I expect a similar code size for AVR
+or ARM use. The class was designed to use flash over RAM, whenever there
+was a choice.
 
 STARTUP ISSUES:
 
