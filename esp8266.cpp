@@ -17,9 +17,13 @@
 #if DBG
 #define RX(x) printf("RX(%c)\n",x)
 #define CMD(s) puts(s)
+#define CMDX(s) fputs(s,stdout);
+#define CMDC(c) putchar(c)
 #else
 #define RX(x)
 #define CMD(x)
+#define CMDX(s)
+#define CMDC(c)
 #endif
 
 //////////////////////////////////////////////////////////////////////
@@ -247,6 +251,8 @@ ESP8266::receive() {
 							else	printf(" +IPD(%d,ch='%c' %02X) bytes remaining %d\n",ipd_id,b,b,ipd_len);
 #endif
 						}
+						if ( statep->udp && rx_cb )	// Is this a UDP socket?
+							rx_cb(ipd_id,-1);	// yes, send -1 to indicate end of datagram
 						first = '\n';
 						ipd_id = ipd_len = 0;
 						resp_id = 0;
@@ -467,6 +473,10 @@ ESP8266::start() {
 		command("ATE0");
 	} while ( !waitokfail() );
 
+	CMD("AT+CIPMUX=1");
+	command("AT+CIPMUX=1");
+	waitokfail();
+
 	get_version();
 
 	CMD("AT+CWJAP?");
@@ -622,12 +632,11 @@ ESP8266::waitokfail() {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Start TCP connect to host, port. Returns socket if successful,
-// else -1 if an error occurred.
+// Start a TCP or UDP socket
 //////////////////////////////////////////////////////////////////////
 
 int
-ESP8266::tcp_connect(const char *host,int port,recv_func_t rx_cb) {
+ESP8266::socket(const char *socktype,const char *host,int port,recv_func_t rx_cb,int local_port) {
 	int sock = -1;
 
 	// Allocate a socket
@@ -648,6 +657,7 @@ ESP8266::tcp_connect(const char *host,int port,recv_func_t rx_cb) {
 	s_state& s = state[sock];
 
 	s.open = 1;	// Mark it as allocated (for now)
+	s.udp = socktype[0] == 'U';
 	s.disconnected = 0;
 
 	resp_id = 0;
@@ -658,19 +668,46 @@ ESP8266::tcp_connect(const char *host,int port,recv_func_t rx_cb) {
 	resp_ok = 0;
 
 	// Try to connect
+	CMDX("AT+CIPSTART=");
 	write("AT+CIPSTART=");
+
+	CMDC('0' + sock);
 	writeb('0' + sock);
-	write(",\"TCP\",\"");
+	
+	CMDX(",\"");
+	write(",\"");
+
+	CMDX(socktype);
+	write(socktype);
+
+	CMDX("\",\"");
+	write("\",\"");
+	CMDX(host);
 	write(host);
+	CMDX("\",");
 	write("\",");
 
 	// Convert port to string
 	{
 		char portbuf[16];
 		const char *portstr = int2str(port,portbuf,sizeof portbuf);
+		CMDX(portstr);
 		write(portstr);
-		crlf();
 	}
+
+	if ( local_port >= 0 ) {
+		char lportbuf[16];
+		const char *lportstr = int2str(local_port,lportbuf,sizeof lportbuf);
+		CMDC(',');
+		writeb(',');
+		CMDX(lportstr);
+		write(lportstr);
+		CMDX(",2");
+		write(",2");
+	}
+
+	CMDC('\n');
+	crlf();
 
 	do	{
 		receive();
@@ -688,6 +725,25 @@ ESP8266::tcp_connect(const char *host,int port,recv_func_t rx_cb) {
 	s.connected = 1;
 	s.rxcallback = rx_cb;
 	return sock;
+}
+
+//////////////////////////////////////////////////////////////////////
+// Start TCP connect to host, port. Returns socket if successful,
+// else -1 if an error occurred.
+//////////////////////////////////////////////////////////////////////
+
+int
+ESP8266::tcp_connect(const char *host,int port,recv_func_t rx_cb) {
+	return socket("TCP",host,port,rx_cb,-1);
+}
+
+//////////////////////////////////////////////////////////////////////
+// Open a UDP socket for sending to host and port
+//////////////////////////////////////////////////////////////////////
+
+int
+ESP8266::udp_socket(const char *host,int port,recv_func_t rx_cb,int local_port) {
+	return socket("UDP",host,port,rx_cb,local_port);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -730,7 +786,7 @@ ESP8266::close(int sock) {
 //////////////////////////////////////////////////////////////////////
 
 int
-ESP8266::write(int sock,const char *data,int bytes) {
+ESP8266::write(int sock,const char *data,int bytes,const char *udp_address) {
 	char session;
 	int wlen, tlen = 0;
 	bool bf;
@@ -744,6 +800,9 @@ ESP8266::write(int sock,const char *data,int bytes) {
 
 	if ( statep->disconnected ) {
 		error = Disconnected;
+		return -1;
+	} else if ( udp_address && !statep->udp ) {
+		error = Invalid;
 		return -1;
 	} else if ( bytes == 0 )
 		return 0;
@@ -760,6 +819,14 @@ ESP8266::write(int sock,const char *data,int bytes) {
 		write("AT+CIPSEND=");
 		writeb(session);
 		writeb(',');
+
+		if ( udp_address ) {
+			// Not supported on all ESP devices
+			writeb('"');
+			write(udp_address);
+			write("\",");
+		}
+
 		{
 			char buf[16];
 			const char *bytestr = int2str(bytes,buf,sizeof buf);
