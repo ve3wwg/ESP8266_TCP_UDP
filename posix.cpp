@@ -468,27 +468,10 @@ puts("Setting TIMEOUT");
 	}
 
 	//////////////////////////////////////////////////////////////
-	// Test DHCP On/Off
-	//////////////////////////////////////////////////////////////
-
-	ok = esp.dhcp(false);
-	if ( ok )
-		puts("DHCP off.");
-	else	puts("DHCP off failed!");
-
-	ok = esp.dhcp(true);
-	if ( ok )
-		puts("DHCP on.");
-	else	puts("DHCP on failed!");
-
-	//////////////////////////////////////////////////////////////
 	// Listen on a port, if requested
 	//////////////////////////////////////////////////////////////
 
 	if ( opt_listen >= 0 ) {
-		if ( opt_verbose )
-			printf("LISTENING ON PORT %d\n",opt_listen);
-
 		ok = esp.listen(opt_listen,accept_cb);
 		if ( !ok )
 			fprintf(stderr,"Listen failed.\n");
