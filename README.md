@@ -178,7 +178,7 @@ example of this is found in the posix.cpp example program.
 
 WRITING TO A SOCKET:
 
-Once your have connected to your destination, your calling application
+Once you have connected to your destination, your calling application
 can write data to the socket using:
 
     int bytes = esp.write(int sock,const char *data,int bytes); 
@@ -189,7 +189,7 @@ CLOSING A SOCKET:
 
     esp.close(sock);
 
-THE ESP::receive() METHOD:
+THE esp.receive() METHOD:
 
 ESP8266 methods like tcp_connect() automatically invoke the receive()
 class method at strategic places. Whenever your application is idle, it
@@ -277,15 +277,27 @@ To use it, define your own buffer and use the returned pointer:
 
     char temp[16];
     int x = 23;
-    const char *cp = int2str(x,temp, sizeof temp);
+    const char *cp = int2str(x,temp,sizeof temp);
 
-Upon return cp points to "23". Do not use the buffer name "temp", since
-the conversion starts at the end of the buffer (temp[15] holds the null
-byte) and works backwards. 
+Upon return cp points to "23". Do not use the buffer name "temp" for the
+returned string, since the conversion starts at the end of the buffer
+(temp[15] holds the null byte) and works backwards. The returned pointer
+provides the location of the string's first byte within the buffer.
 
 When compiled under Mac OSX, the esp8266.o module is about 17k in size.
 I expect a similar code size for AVR or ARM use. The class was designed
 to use flash over RAM, whenever there was a choice.
+
+STARTUP ISSUES:
+
+Initially, I highly recommend that you always reset the device using
+esp.reset(), even following a MCU initiated hardware reset. A number of
+settings can be stored in the ESP device and re-established at reset
+time (like access point etc.) If you plan to exploit that, you may be
+able to just use esp.start() instead of the delay caused by reset.
+
+If you expect to connect to the internet, make sure your WIFI AP is
+working first.
 
 UNFINISHED BUSINESS:
 
