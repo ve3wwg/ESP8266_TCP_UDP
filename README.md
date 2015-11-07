@@ -18,36 +18,36 @@ POSIX TESTING
 There is a POSIX test program named posix.cpp that you can use to try
 out the library before involving the MCU. First make the project:
 
-$ make 
+    $ make 
 
 Use target clobber, if you made changes and you need to rebuild:
 
-$ make clobber
+    $ make clobber
 
 to clobber and rebuild:
 
-$ make clobber all
+    $ make clobber all
 
 You can get help from the test program:
 
-$ ./posix -h
-Usage: posix [-R [-W]] [-c:] [-p:] [-b:] [-d:] [-j:] [-P:] [-r] [-o:] [-D:] [-A:] [-v] [-h]
-where
-	-R		Begin with ESP8266 reset
-	-W		Wait for WIFI CONNECT + GOT IP
-	-c host		Host to connect to
-	-p port		Default is port 80
-	-d device	Serial device pathname
-	-j wifi_name	WIFI network to join
-	-P password	WIFI passord (for -j)
-	-r		Resume connection to last used WIFI
-	-o file		Send received output to file (default is stdout)
-	-D {0|1}	Disable/Enable DHCP
-	-A ipaddr	Set AP IP Address
-	-T secs		Set new timeout
-	-L port		Listen on port
-	-v		Verbose output mode
-	-h		This help info.
+    $ ./posix -h
+    Usage: posix [-R [-W]] [-c:] [-p:] [-b:] [-d:] [-j:] [-P:] [-r] [-o:] [-D:] [-A:] [-v] [-h]
+    where
+    	-R		Begin with ESP8266 reset
+    	-W		Wait for WIFI CONNECT + GOT IP
+    	-c host		Host to connect to
+    	-p port		Default is port 80
+    	-d device	Serial device pathname
+    	-j wifi_name	WIFI network to join
+    	-P password	WIFI passord (for -j)
+    	-r		Resume connection to last used WIFI
+    	-o file		Send received output to file (default is stdout)
+    	-D {0|1}	Disable/Enable DHCP
+    	-A ipaddr	Set AP IP Address
+    	-T secs		Set new timeout
+    	-L port		Listen on port
+    	-v		Verbose output mode
+    	-h		This help info.
 
 When neither -j or -r used, -r is assumed. The option order is
 insignificant, but the order that they are acted upon is as follows:
@@ -94,16 +94,16 @@ that does not arrive.
 Use a 3.3V FTDI adapter only (you can cheat if you use a voltage 
 divider). The ESP8299 will not tolerate 5V signals.
 
-MCU/USB             ESP8266
---------            -----------------
-TX  --------------> RX
-RX  <-------------- TX
-RTS(1)------------> GPIO15 (UART0_RTS)
-CTS(2) <----------- GPIO13 (UART0_CTS)
-        OTHER
-        -----
-        +3.3V ----> CH_PD (or "EN")
-        +3.3V ----> RST (low to high to reset)
+    MCU/USB             ESP8266
+    --------            -----------------
+    TX  --------------> RX
+    RX  <-------------- TX
+    RTS(1)------------> GPIO15 (UART0_RTS)
+    CTS(2) <----------- GPIO13 (UART0_CTS)
+            OTHER
+            -----
+            +3.3V ----> CH_PD (or "EN")
+            +3.3V ----> RST (low to high to reset)
 Notes:
 ------
     1. Some usb serial adapters may label this connection as DTR.
@@ -295,67 +295,67 @@ EXAMPLE:
 
 Use ^C to exit the program.
 
-$ ./posix -RW -c google.com -p80 -o t.t -v -L80 
-Opened /dev/cu.usbserial-A50285BI for I/O at 115200 baud
-Version: 0.25.0.0(Jun  5 2015 16:27:16)
-itype=10, info='192.168.4.1'
-itype=11, info='192.168.4.1'
-itype=12, info='255.255.255.0'
-itype=10, info='192.168.0.73'
-itype=11, info='192.168.0.1'
-itype=12, info='255.255.255.0'
-MAC address = '1a:fe:34:fa:20:5e'
-MAC address = '18:fe:34:fa:20:5e'
-Timeout = 180
-Auto Connect = ON
-Connecting to google.com
-Opened socket 0
-Sent 7 bytes
-Closed sock 0 ok
-DHCP off.
-DHCP on.
-LISTENING ON PORT 80
-Listening on port 80..
-ACCEPTED server connect on sock = 0
-Server byte = '/' 2F
-Server byte = 'U' 55
-Server byte = 's' 73
-Server byte = 'e' 65
-Server byte = 'r' 72
-Server byte = 's' 73
-Server byte = '/' 2F
-Server byte = 'x' 76
-Server byte = 'y' 65
-Server byte = 'z' 33
-Server byte = 'z' 77
-Server byte = 'y' 77
-Server byte = '/' 2F
-Server byte = 'e' 65
-Server byte = 's' 73
-Server byte = 'p' 70
-Server byte = '8' 38
-Server byte = '2' 32
-Server byte = '6' 36
-Server byte = '6' 36
-Server byte = '
-' 0A
-
-REMOTE CLOSED server socket 0
-^C
-$ cat t.t
-HTTP/1.0 302 Found
-Cache-Control: private
-Content-Type: text/html; charset=UTF-8
-Location: http://www.google.ca/?gfe_rd=cr&ei=n2c9Vrf7F-qM8Qf97JvYBQ
-Content-Length: 258
-Date: Sat, 07 Nov 2015 02:53:19 GMT
-Server: GFE/2.0
-
-<HTML><HEAD><meta http-equiv="content-type" content="text/html;charset=utf-8">
-<TITLE>302 Moved</TITLE></HEAD><BODY>
-<H1>302 Moved</H1>
-The document has moved
-<A HREF="http://www.google.ca/?gfe_rd=cr&amp;ei=n2c9Vrf7F-qM8Qf97JvYBQ">here</A>.
-</BODY></HTML>
-$ 
+    $ ./posix -RW -c google.com -p80 -o t.t -v -L80 
+    Opened /dev/cu.usbserial-A50285BI for I/O at 115200 baud
+    Version: 0.25.0.0(Jun  5 2015 16:27:16)
+    itype=10, info='192.168.4.1'
+    itype=11, info='192.168.4.1'
+    itype=12, info='255.255.255.0'
+    itype=10, info='192.168.0.73'
+    itype=11, info='192.168.0.1'
+    itype=12, info='255.255.255.0'
+    MAC address = '1a:fe:34:fa:20:5e'
+    MAC address = '18:fe:34:fa:20:5e'
+    Timeout = 180
+    Auto Connect = ON
+    Connecting to google.com
+    Opened socket 0
+    Sent 7 bytes
+    Closed sock 0 ok
+    DHCP off.
+    DHCP on.
+    LISTENING ON PORT 80
+    Listening on port 80..
+    ACCEPTED server connect on sock = 0
+    Server byte = '/' 2F
+    Server byte = 'U' 55
+    Server byte = 's' 73
+    Server byte = 'e' 65
+    Server byte = 'r' 72
+    Server byte = 's' 73
+    Server byte = '/' 2F
+    Server byte = 'x' 76
+    Server byte = 'y' 65
+    Server byte = 'z' 33
+    Server byte = 'z' 77
+    Server byte = 'y' 77
+    Server byte = '/' 2F
+    Server byte = 'e' 65
+    Server byte = 's' 73
+    Server byte = 'p' 70
+    Server byte = '8' 38
+    Server byte = '2' 32
+    Server byte = '6' 36
+    Server byte = '6' 36
+    Server byte = '
+    ' 0A
+    
+    REMOTE CLOSED server socket 0
+    ^C
+    $ cat t.t
+    HTTP/1.0 302 Found
+    Cache-Control: private
+    Content-Type: text/html; charset=UTF-8
+    Location: http://www.google.ca/?gfe_rd=cr&ei=n2c9Vrf7F-qM8Qf97JvYBQ
+    Content-Length: 258
+    Date: Sat, 07 Nov 2015 02:53:19 GMT
+    Server: GFE/2.0
+    
+    <HTML><HEAD><meta http-equiv="content-type" content="text/html;charset=utf-8">
+    <TITLE>302 Moved</TITLE></HEAD><BODY>
+    <H1>302 Moved</H1>
+    The document has moved
+    <A HREF="http://www.google.ca/?gfe_rd=cr&amp;ei=n2c9Vrf7F-qM8Qf97JvYBQ">here</A>.
+    </BODY></HTML>
+    $ 
 --
