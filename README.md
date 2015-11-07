@@ -154,7 +154,14 @@ what it needs to keep. An example will make this easier to explain:
 To connect to a website, you would use the class method tcp_connect(),
 as shown below:
 
-int ESP8266::tcp_connect(const char *host,int port,recv_func_t rx_cb);
+    ESP8266 esp(writeb,readb,rpoll,idle); 
+
+    int sock = esp.tcp_connect(const char *host,int port,recv_func_t rx_cb);
+    if ( sock == -1 ) {
+        // Failed
+    } else {
+        // Connected on sock
+    }
 
 The callback recv_func_t is defined as:
 
