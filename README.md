@@ -190,10 +190,14 @@ The callback recv_func_t is defined as:
 
 If the connect is successful, a socket number (0 to 4) is returned. The
 value -1 is returned if this fails. When data is received, the callback
-rx_cb is called for each character (ch) for the socket (sock). The
-special value of ch=-1 means that the remote end has closed the socket
-(you will need to close the socket also to free that resource). An
-example of this is found in the posix.cpp example program.
+rx_cb is called for each character (ch) for the socket (sock). 
+
+For TCP, the special value of ch=-1 means that the remote end has closed
+the socket (you will need to close the socket also to free that
+resource). An example of this is found in the posix.cpp example program.
+
+For UDP, the special value of ch=-1 means that you have reached the end
+of the datagram. 
 
 WRITING TO A SOCKET:
 --------------------
