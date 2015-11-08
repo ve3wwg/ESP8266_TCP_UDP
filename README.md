@@ -158,6 +158,7 @@ The four parameters are callbacks:
         void idle();
 
 RECEIVING:
+----------
 
 When the ESP8266 has information to be sent, it must be received
 immediately whether the application is ready for it or not. For this
@@ -195,6 +196,7 @@ special value of ch=-1 means that the remote end has closed the socket
 example of this is found in the posix.cpp example program.
 
 WRITING TO A SOCKET:
+--------------------
 
 Once you have connected to your destination, your calling application
 can write data to the socket using:
@@ -204,10 +206,12 @@ can write data to the socket using:
 if the return value is -1, there has been an error.
 
 CLOSING A SOCKET:
+-----------------
 
     esp.close(sock);
 
 UDP SOCKETS:
+------------
 
     int sock = esp.udp_socket(const char *host,int port,recv_func_t rx_cb[,int local_port]);
 
@@ -230,6 +234,7 @@ Your best bet is to simply to close and reopen sessions, as you need to
 send.
 
 THE esp.receive() METHOD:
+-------------------------
 
 ESP8266 methods like tcp_connect() automatically invoke the receive()
 class method at strategic places. Whenever your application is idle, it
@@ -243,6 +248,7 @@ It returns when there is no more data to be read from the device (this
 depends upon the rpoll callback that you provided).
 
 ESP STARTUP:
+------------
 
     esp.reset(true);        // Resets ESP and waits for WIFI AP & IP
     esp.reset(false);       // Resets ESP (and does not wait for AP IP)
@@ -252,18 +258,22 @@ otherwise use:
     esp.start();            // Turns off echo etc. and otherwise initializes
 
 JOINING AN AP:
+--------------
 
     bool ok = esp.ap_join(ap_name,password);
 
 VERSION INFO:
+-------------
 
     printf("Version: %s\n",esp.get_version());
 
 GET STATION (SERVER) ADDRESS:
+-----------------------------
 
     bool ok = esp.get_station_info(ip_info);
 
 START A SERVER (STATION):
+-------------------------
 
     bool ok = esp.listen(int port,accept_t accp_cb);
 
@@ -287,17 +297,20 @@ connection is established, you can receive client data via the callback,
 and write back using esp.write(), as before.
 
 SHUTTING DOWN THE SERVER:
+-------------------------
 
     esp.unlisten();
 
 will terminate the server.
 
 OTHER CLASS METHODS:
+--------------------
 
 See the class definition in esp8266.hpp for other class methods that are
 available for retreiving IP and MAC address info etc.
 
 RESOURCES USED:
+---------------
 
 The class definition is frugal in its use of RAM. There is very little
 dynamic memory used, but malloc() is used to allocate a temporary buffer
@@ -316,6 +329,9 @@ at strategic places in the code. This will release any disposable
 buffers, like the internal one holding the ESP version information (this
 may save 40 to 80 bytes of heap). If the version info is requested again
 for example, a new internal buffer will be created when required.
+
+int2str()
+---------
 
 To avoid the need to pull in sprintf/snprintf library code, the esp8266.cpp
 module provides its own efficient integer to string conversion routine:
@@ -339,6 +355,7 @@ or ARM use. The class was designed to use flash over RAM, whenever there
 was a choice.
 
 STARTUP ISSUES:
+---------------
 
 Initially, I highly recommend that you always reset the device using
 esp.reset(), even following a MCU initiated hardware reset. A number of
@@ -350,22 +367,20 @@ If you expect to connect to the internet, make sure your WIFI AP is
 working first.
 
 UNFINISHED BUSINESS:
+--------------------
 
     - Ability to receive a list of WIFI stations
     - and sundry
 
-TESTING WITH OSX nc COMMAND:
+TESTING UDP WITH OSX nc COMMAND:
+--------------------------------
 
 For some reason, I receive four datagrams with 'X' ahead of the datagram
 I wanted to send.  I know that this originates with nc (not ESP) on
 OSX. I don't know yet if this also happens from nc on Linux.
 
-FINAL NOTE:
-
-Anything not explained sufficiently in this README can be found in the
-class definition (esp8266.hpp) and the POSIX test program (posix.cpp).
-
-EXAMPLE:
+EXAMPLE TCP TEST:
+-----------------
 
 Use ^C to exit the program.
 
