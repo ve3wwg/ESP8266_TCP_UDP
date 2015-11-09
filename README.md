@@ -12,6 +12,19 @@ using a FTDI (or similar) usb serial cable from Linux/*BSD/Mac OSX. You
 can easily take the esp8266.hpp/cpp source code and plunk it into your
 AVR or ARM MCU project.
 
+*** WARNING (TODO) ***
+----------------------
+
+At the present time, this module turns on Access Point (AP) and Station
+mode. By default, the ESP device is configured for open access. So if
+your ESP joins your own WIFI, you will be exposing yourself to outside
+traffic.  If you're handy with C++, this is easily fixed.  I will be
+correcting this deficiency by December 2015, when I am freed from 
+other responsibilities.
+
+Another solution is to simply manually change the AP parameters using a
+terminal program. In this manner your AP will be secured when enabled;
+
 POSIX TESTING
 -------------
 
