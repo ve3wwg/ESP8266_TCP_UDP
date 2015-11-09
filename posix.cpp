@@ -134,24 +134,6 @@ udp_rx(int sock,int byte) {
 	}
 }
 
-//////////////////////////////////////////////////////////////////////
-// Receive IP/Gateway/Netmask info
-//////////////////////////////////////////////////////////////////////
-
-static void
-ip_info(ESP8266::IpGwMask itype,const char *info) {
-	printf("itype=%d, info='%s'\n",itype,info);
-}
-
-//////////////////////////////////////////////////////////////////////
-// Print AP/STA MAC Address
-//////////////////////////////////////////////////////////////////////
-
-static void
-recv_mac(const char *mac_addr) {
-	printf("MAC address = '%s'\n",mac_addr);
-}
-
 static void
 server_recv(int sock,int byte) {
 
@@ -412,9 +394,27 @@ main(int argc,char **argv) {
 	printf("Version: %s\n",esp.get_version());
 	esp.release();
 
-	ok = esp.get_ap_info(ip_info);
-	if ( !ok )
-		fprintf(stderr,"Get AP Address Info failed.\n");
+	{
+		char ssid[32], password[64];
+		int chan;
+		ESP8266::AP_Ecn ecn;
+
+		ok = esp.query_ap(ssid,sizeof ssid,password,sizeof password,chan,ecn);
+		if ( ok )
+			printf("AP: ssid='%s', password='%s', chan=%d, ecn=%d\n",
+				ssid,password,chan,int(ecn));
+		else	fprintf(stderr,"%s: Querying AP settings\n",esp.strerror());
+	}
+
+	{
+		char ip[20], gw[20], nm[20];
+
+		ok = esp.get_ap_info(ip,sizeof ip,gw,sizeof gw,nm,sizeof nm);
+		if ( !ok )
+			fprintf(stderr,"Get AP Address Info failed.\n");
+		else	printf("AP IP='%s', gateway='%s', netmask='%s'\n",ip,gw,nm);
+		
+	}
 
 	if ( opt_ap_address ) {
 		ok = esp.set_ap_addr(opt_ap_address);
@@ -428,17 +428,31 @@ main(int argc,char **argv) {
 			fprintf(stderr,"Set Station Address failed.\n");
 	}
 
-	ok = esp.get_station_info(ip_info);
-	if ( !ok )
-		fprintf(stderr,"Get Station Address Info failed.\n");
+	{
+		char ip[32], gw[32], nmask[32];
+		ok = esp.get_station_info(ip,sizeof ip,gw,sizeof gw,nmask,sizeof nmask);
+		if ( !ok )
+			fprintf(stderr,"Get Station Address Info failed.\n");
+		else	printf("Station IP='%s', gateway='%s', netmask='%s'\n",ip,gw,nmask);
+	}
 
-	ok = esp.get_ap_mac(recv_mac);
-	if ( !ok )
-		fprintf(stderr,"Get AP Mac address failed.\n");
+	{
+		char mac[32];
 
-	ok = esp.get_station_mac(recv_mac);
-	if ( !ok )
-		fprintf(stderr,"Get Station Mac address failed.\n");
+		ok = esp.get_ap_mac(mac,sizeof mac);
+		if ( !ok )
+			fprintf(stderr,"Get AP Mac address failed.\n");
+		else	printf("AP Mac address is '%s'\n",mac);
+	}
+
+	{
+		char mac[32];
+
+		ok = esp.get_station_mac(mac,sizeof mac);
+		if ( !ok )
+			fprintf(stderr,"Get Station Mac address failed.\n");
+		else	printf("Station Mac address is '%s'\n",mac);
+	}
 
 	int timeout = esp.get_timeout();
 	printf("Timeout = %d\n",timeout);

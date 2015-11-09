@@ -12,7 +12,7 @@
 
 #include "esp8266.hpp"
 
-#define DBG 	0
+#define DBG 	2
 
 #if DBG
 #define RX(x) printf("RX(%c)\n",x)
@@ -20,6 +20,7 @@
 #define CMDX(s) fputs(s,stdout);
 #define CMDC(c) putchar(c)
 #else
+#define NDEBUG 1
 #define RX(x)
 #define CMD(x)
 #define CMDX(s)
@@ -70,9 +71,9 @@ ESP8266::clear(bool notify) {
 	temp = 0;
 	error = Ok;
 
-	recv_ipinfo = 0;
-	recv_mac = 0;
 	accept_cb = 0;
+
+	bufsp = 0;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -113,25 +114,39 @@ ESP8266::read_id() {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Read into temp buffer of maxlen chars, returning stop char
+// Read into selected buffer
 //////////////////////////////////////////////////////////////////////
 
 char
-ESP8266::read_temp(int maxlen,char stop) {
-	int x = 0;
+ESP8266::read_buf(int bufx,char stop) {
+	char *buf = bufsp[bufx].buf;
+	int x = 0, maxlen = bufsp[bufx].bufsiz;
 	char b;
 
-	temp = (char *)realloc(temp,maxlen+1);
 	while ( (b = readb()) != stop && b != '\r' ) {
-		if ( x < maxlen )
-			temp[x++] = b;
+		if ( x + 1 >= maxlen )
+			break;
+		buf[x++] = b;
 	}
-	temp[x] = 0;
+	buf[x] = 0;
 
-	if ( x + 5 < maxlen+1 )
-		temp = (char *)realloc(temp,x+1);
-	return b;
+	return skip_until(b,stop);
 }	
+
+//////////////////////////////////////////////////////////////////////
+// Skip until stop char is read, else stop if CR is reached
+//////////////////////////////////////////////////////////////////////
+
+char
+ESP8266::skip_until(char b,char stop) {
+
+	do	{
+		if ( b == stop )
+			return b;
+		b = readb();
+	} while ( b != '\r' );
+	return b;
+}
 
 //////////////////////////////////////////////////////////////////////
 // Perform receive functions
@@ -148,6 +163,7 @@ ESP8266::receive() {
 		{ "+IPD,", 		0,	0x0100 },
 		{ "+CWAUTOCONN:", 	1,	0x0101 },
 		{ "+CWJAP:\"",		3,	0x0111 },
+		{ "+CWSAP:\"",		3,	0x0134 },
 		{ "+CIPAP:ip:\"", 	2,	0x0102 },
 		{ "+CIPAP:gateway:\"",	7,	0x0112 },
 		{ "+CIPAP:netmask:\"",	7,	0x0122 },
@@ -267,45 +283,43 @@ ESP8266::receive() {
 					wifi_connected = 1;
 					break;
 				case 0x0102:	// "+CIPAP:ip:\""
-					b = read_temp(40,'"');
-					if ( recv_ipinfo ) {
-						recv_ipinfo(IP_Addr,temp);
-					} else	{
+					b = read_buf(0,'"');
+					if ( !wifi_got_ip ) {
 						// Invoked by is_wifi(bool got_ip=true)
 						wifi_got_ip = strcmp(temp,"0.0.0.0") != 0;
 					}
 					break;
 				case 0x0112:	// "+CIPAP:gateway:\""
-					b = read_temp(40,'"');
-					if ( recv_ipinfo )
-						recv_ipinfo(Gateway,temp);
+					b = read_buf(1,'"');
 					break;
 				case 0x0122:	// "+CIPAP:netmask:\""
-					b = read_temp(40,'"');
-					if ( recv_ipinfo )
-						recv_ipinfo(NetMask,temp);
+					b = read_buf(2,'"');
 					break;
 				case 0x0103:	// "+CIPAPMAC:\"",
-					b = read_temp(40,'"');
-					if ( recv_mac )
-						recv_mac(temp);
+					b = read_buf(0,'"');
 					break;
 				case 0x0104:	// "+CIPSTA:ip:\"",
-					b = read_temp(40,'"');
-					recv_ipinfo(IP_Addr,temp);
+					b = read_buf(0,'"');
 					break;
 				case 0x0114:	// "+CIPSTA:gateway:\"",
-					b = read_temp(40,'"');
-					recv_ipinfo(Gateway,temp);
+					b = read_buf(1,'"');
 					break;
 				case 0x0124:	// "+CIPSTA:netmask:\"",
-					b = read_temp(40,'"');
-					recv_ipinfo(NetMask,temp);
+					b = read_buf(2,'"');
+					break;
+				case 0x0134:	// +CWSAP:"AI-THINKER_FA205E","",11,0
+					assert(bufsp);
+					b = read_buf(0,'"');
+					b = skip_until(b,',');
+					b = skip_until(b,'"');
+					b = read_buf(1,'"');
+					b = skip_until(b,',');
+					b = read_buf(2,',');
+					b = read_buf(3,'\r');
+					first = 0;
 					break;
 				case 0x0105:	// "+CIPSTAMAC:\"",
-					b = read_temp(40,'"');
-					if ( recv_mac )
-						recv_mac(temp);
+					b = read_buf(0,'"');
 					break;
 				case 0x0106:	// +CIPSTO:
 					b = read_id();
@@ -540,14 +554,18 @@ ESP8266::is_wifi(bool got_ip) {
 	// OK
 	//////////////////////////////////////////////////////////////
 
-	recv_ipinfo_t save_recv_ipinfo = recv_ipinfo;	// Save callback
-	recv_ipinfo = 0;				// Disable it for now
+	char ip[20], gw[20], nm[20];
+	s_bufs bufs[] = {
+		{ ip, sizeof ip },
+		{ gw, sizeof gw },
+		{ nm, sizeof nm }
+	};
+
+	this->bufsp = bufs;
 
 	CMD("AT+CIPAP?");
 	command("AT+CIPAP?");
 	waitokfail();
-
-	recv_ipinfo = save_recv_ipinfo;			// Restore cb, if any
 
 	return wifi_got_ip;
 }
@@ -899,9 +917,14 @@ ESP8266::get_version() {
 //////////////////////////////////////////////////////////////////////
 
 bool
-ESP8266::get_ap_info(recv_ipinfo_t callback) {
+ESP8266::get_ap_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nm,int nmsiz) {
+	s_bufs bufs[] = {
+		{ ip, gwsiz },
+		{ gw, gwsiz },
+		{ nm, nmsiz }
+	};
 
-	this->recv_ipinfo = callback;
+	this->bufsp = bufs;
 
 	CMD("AT+CIPAP?");
 	command("AT+CIPAP?");
@@ -913,12 +936,26 @@ ESP8266::get_ap_info(recv_ipinfo_t callback) {
 //////////////////////////////////////////////////////////////////////
 
 bool
-ESP8266::get_station_info(recv_ipinfo_t callback) {
-	this->recv_ipinfo = callback;
+ESP8266::get_station_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nmask,int nmasksiz) {
+	s_bufs bufs[3];
+	bool ok;
+
+	bufs[0].buf = ip;
+	bufs[0].bufsiz = ipsiz;
+	bufs[1].buf = gw;
+	bufs[1].bufsiz = gwsiz;
+	bufs[2].buf = nmask;
+	bufs[2].bufsiz = nmasksiz;
+
+	this->bufsp = bufs;
 
 	CMD("AT+CIPSTA?");
 	command("AT+CIPSTA?");
-	return waitokfail();
+
+	ok = waitokfail();
+	if ( !ok )
+		error = Fail;
+	return ok;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -952,9 +989,12 @@ ESP8266::set_station_addr(const char *ip_addr) {
 }
 
 bool
-ESP8266::get_ap_mac(recv_mac_t callback) {
+ESP8266::get_ap_mac(char *mac,int macsiz) {
+	s_bufs bufs[] = {
+		{ mac, macsiz }
+	};
 
-	this->recv_mac = callback;
+	this->bufsp = bufs;
 
 	CMD("AT+CIPAPMAC?");
 	command("AT+CIPAPMAC?");
@@ -973,9 +1013,12 @@ ESP8266::set_ap_mac(const char *mac_addr) {
 }
 
 bool
-ESP8266::get_station_mac(recv_mac_t callback) {
+ESP8266::get_station_mac(char *mac,int macsiz) {
+	s_bufs bufs[] = {
+		{ mac, macsiz }
+	};
 
-	this->recv_mac = callback;
+	this->bufsp = bufs;
 
 	CMD("AT+CIPSTAMAC?");
 	command("AT+CIPSTAMAC?");
@@ -1090,6 +1133,75 @@ ESP8266::dhcp(bool on) {
 }
 
 //////////////////////////////////////////////////////////////////////
+// Query AP Parameters:
+// AT+CWSAP?
+// +CWSAP:"AI-THINKER_FA205E","",11,0
+// 
+// OK
+// Set:
+// "ssid","pwd",ch,ecn
+// ecn:
+//	0 - Open
+//	1 - WPA_PSK
+//	2 - WPA2_PSK
+//	3 - WPA_WPA2_PSK
+// OK
+//////////////////////////////////////////////////////////////////////
+
+bool
+ESP8266::query_ap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& ecn) {
+	struct s_bufs bufs[4];
+	char chbuf[8], ecnbuf[8];
+	bool ok;
+
+	bufs[0].buf = ssid;
+	bufs[0].bufsiz = ssidsiz;
+	bufs[1].buf = pw;
+	bufs[1].bufsiz = pwsiz;
+	bufs[2].buf = chbuf;
+	bufs[2].bufsiz = sizeof chbuf;
+	bufs[3].buf = ecnbuf;
+	bufs[3].bufsiz = sizeof ecnbuf;
+
+	this->bufsp = bufs;
+
+	CMD("AT+CWSAP?");
+	command("AT+CWSAP?");
+
+	ok = waitokfail();
+	if ( ok ) {
+		ch = str2int(chbuf);
+		ecn = AP_Ecn(str2int(ecnbuf));
+	} else	error = Fail;
+	this->bufsp = 0;
+	return ok;
+}
+
+//////////////////////////////////////////////////////////////////////
+// List AP's:
+// AT+CWLAP
+// +CWLAP:(2,"england",-74,"d8:eb:97:13:c6:9d",6)
+// +CWLAP:(3,"largeshark2.4",-72,"b4:75:0e:fe:4b:bb",6)
+// +CWLAP:(0,"largeshark-guest",-75,"b6:75:0e:fe:4b:bc",6)
+// +CWLAP:(3,"The Room",-82,"24:a0:74:78:39:9c",11)
+// +CWLAP:(4,"BrownTiger",-77,"c8:d7:19:01:68:53",7)
+// +CWLAP:(3,"NETGEAR67",-57,"c0:ff:d4:95:80:04",11)
+// 
+// OK
+// WIFI DISCONNECT
+// WIFI CONNECTED
+// WIFI GOT IP
+//////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////
+// Quit AP:
+// AT+CWQAP
+//
+// OK
+//////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////
 // Release any unessential storage
 //////////////////////////////////////////////////////////////////////
 
@@ -1142,6 +1254,29 @@ int2str(int v,char *buf,int bufsiz) {
 	if ( sgn && cp > buf )
 		*--cp = sgn;
 	return cp;
+}
+
+//////////////////////////////////////////////////////////////////////
+// Convert text s to string (no error check)
+//////////////////////////////////////////////////////////////////////
+
+int
+str2int(const char *s) {
+const char *orig = s;
+	int v = 0;
+	bool neg = *s == '-' ? true : false;
+
+	if ( neg )
+		++s;
+
+	while ( *s >= '0' && *s <= '9' )
+		v = v * 10 + ((*s++) & 0x0F);
+
+printf("str2int('%s') => %d\n",orig,neg ? -v : v);
+
+	if ( neg )
+		return -v;
+	return v;
 }
 
 // End esp8266.cpp

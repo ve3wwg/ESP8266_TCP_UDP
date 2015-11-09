@@ -10,6 +10,13 @@
 
 class ESP8266 {
 public:
+	enum AP_Ecn {
+		Open = 0,
+		WPA_PSK = 1,
+		WPA2_PSK = 2,
+		WPA_WPA2_PSK = 3
+	};	
+
 	enum IpGwMask {		// IP Info Types
 		IP_Addr=10,	// +CIPAP:ip:"192.168.4.1"
 		Gateway,	// +CIPAP:gateway:"192.168.4.1"
@@ -24,8 +31,6 @@ public:
 
 	// User Callbacks:
 	typedef void (*recv_func_t)(int sock,int ch);		// Received data (1 byte)
-	typedef void (*recv_ipinfo_t)(IpGwMask itype,const char *info); // IP Info
-	typedef void (*recv_mac_t)(const char *mac_addr);	// Received MAC info
 	typedef void (*accept_t)(int sock);			// Accepted socket
 
 	enum Error {
@@ -39,13 +44,16 @@ public:
 
 private:
 
+	struct s_bufs {
+		char	*buf;
+		int	bufsiz;
+	};
+
 	write_func_t	writeb;			// Called to write 1 byte to ESP
 	read_func_t	readb;			// Called to read 1 byte from ESP
 	poll_func_t	rpoll;			// Called to poll if data to read from ESP
 	idle_func_t	idle;			// Idle callback
 
-	recv_ipinfo_t	recv_ipinfo;		// IP information callback
-	recv_mac_t	recv_mac;		// MAC address callback
 	accept_t	accept_cb;		// Accept callback
 	
 	Error		error;			// Last error encountered
@@ -60,6 +68,7 @@ private:
 
 	char		*version;		// Version info, else nullptr
 	char		*temp;			// Temporary buffer
+	s_bufs		*bufsp;			// Temp ptr for collecting info
 
 	s_state		state[N_CONNECTION];	// Sockets state
 
@@ -87,7 +96,9 @@ private:
 	s_state *lookup(int sock);		// Lookup socket, else nullptr
 	bool waitokfail();			// Wait for OK or FAIL (or ERROR)
 	char read_id();				// Read in an unsigned integer
-	char read_temp(int maxlen,char stop);	// Read until stop character
+	char read_buf(int bufx,char stop);	// Read into bufx until stop char
+	char skip_until(char b,char stop);	// Skip until stop charactor (or \r)
+
 	int socket(const char *socktype,const char *host,int port,recv_func_t rx_cb,int local_port=-1);
 
 public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_func_t idle);
@@ -103,6 +114,8 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	void wait_wifi(bool got_ip);			// Wait for "WIFI CONNECTED" (optionally WIFI GOT IP)
 	bool is_wifi(bool got_ip);			// Return true if we have AP (optionally and IP)
 
+	bool query_ap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& ecn);
+
 	const char *get_version();			// Get ESP version
 	void release();					// Release any temp buffers (if possible)
 
@@ -113,16 +126,16 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	bool dhcp(bool on);				// Enable/disable DHCP
 
 	bool ap_join(const char *ap,const char *passwd); // Join Access Point
-	bool get_ap_info(recv_ipinfo_t callback);	// Get access point info
+	bool get_ap_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nm,int nmsiz);
 	bool set_ap_addr(const char *ip_addr);		// Change access point IP address
-	bool get_ap_mac(recv_mac_t callback);		// Get access point MAC address
+	bool get_ap_mac(char *mac,int macsiz);		// Get access point MAC address
 	bool set_ap_mac(const char *mac_addr);		// Set access point MAC address
 	int get_autoconn();				// Get access point auto-connect setting
 	bool set_autoconn(bool on);			// Set access point auto-connect setting
 
-	bool get_station_info(recv_ipinfo_t callback);	// Get station info
+	bool get_station_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nm,int nmsiz);
 	bool set_station_addr(const char *ip_addr);	// Set station IP address
-	bool get_station_mac(recv_mac_t callback);	// Get station MAC address
+	bool get_station_mac(char *mac,int macsiz);	// Get station MAC address
 	bool set_station_mac(const char *mac_addr);	// Set station MAC address
 	int get_timeout();				// Get station timeout
 	bool set_timeout(int seconds);			// Set station timeout
@@ -140,6 +153,7 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 };
 
 const char *int2str(int v,char *buf,int bufsiz);
+int str2int(const char *s);
 
 #endif // ESP8266_HPP
 
