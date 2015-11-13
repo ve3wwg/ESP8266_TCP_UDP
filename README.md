@@ -12,6 +12,17 @@ using a FTDI (or similar) usb serial cable from Linux/*BSD/Mac OSX. You
 can easily take the esp8266.hpp/cpp source code and plunk it into your
 AVR or ARM MCU project.
 
+WIKI
+----
+
+Wiki documentation has been started, but is work in progress:
+
+   https://github.com/ve3wwg/ESP8266/wiki
+
+Check back periodically, to check progress.  It is my goal to replace
+this winded README with the Wiki pages.
+
+
 *** WARNING (TODO) ***
 ----------------------
 
