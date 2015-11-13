@@ -656,6 +656,16 @@ ESP8266::command(const char *cmd) {
 }
 
 //////////////////////////////////////////////////////////////////////
+// Issue ESP command and wait for OK/FAIL/ERROR (returns true for OK)
+//////////////////////////////////////////////////////////////////////
+
+bool
+ESP8266::commandok(const char *cmd) {
+	command(cmd);
+	return waitokfail();
+}
+
+//////////////////////////////////////////////////////////////////////
 // Read until we get OK/FAIL
 //////////////////////////////////////////////////////////////////////
 
@@ -1285,7 +1295,6 @@ int2str(int v,char *buf,int bufsiz) {
 
 int
 str2int(const char *s) {
-const char *orig = s;
 	int v = 0;
 	bool neg = *s == '-' ? true : false;
 
@@ -1294,8 +1303,6 @@ const char *orig = s;
 
 	while ( *s >= '0' && *s <= '9' )
 		v = v * 10 + ((*s++) & 0x0F);
-
-printf("str2int('%s') => %d\n",orig,neg ? -v : v);
 
 	if ( neg )
 		return -v;

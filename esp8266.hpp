@@ -152,6 +152,28 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	int udp_socket(const char *host,int port,recv_func_t rx_cb,int local_port=-1);	// Create UDP socket to send to host at port, with recv callback
 	int write(int sock,const char *data,int bytes,const char *udp_address=0); // Write to TCP/UDP connection (optionally to a different UDP address)
 	bool close(int sock);						// Close TCP connection
+
+	//////////////////////////////////////////////////////////////
+	// The "manual" API
+	//////////////////////////////////////////////////////////////
+
+	bool commandok(const char *cmd);		// Issue command + CR LF and wait for OK/FAIL/ERROR
+
+	inline void clear_flag_ready()			{ ready = 0; }
+	inline void clear_flag_wifi_connected()		{ wifi_connected = 0; }
+	inline void clear_flag_got_ip()			{ wifi_got_ip = 0; }
+	inline void clear_flag_ok()			{ resp_ok = 0; }
+	inline void clear_flag_fail()			{ resp_fail = 0; }
+	inline void clear_flag_dnsfail()		{ resp_dnsfail = 0; }
+	inline void clear_flag_error()			{ resp_error = 0; }
+
+	inline bool get_flag_ready() const		{ return ready; }
+	inline bool get_flag_wifi_connected() const	{ return wifi_connected; }
+	inline bool get_flag_got_ip() const		{ return wifi_got_ip; }
+	inline bool get_flag_ok() const			{ return resp_ok; }
+	inline bool get_flag_fail() const		{ return resp_fail; }
+	inline bool get_flag_dnsfail() const		{ return resp_dnsfail; }
+	inline bool get_flag_error() const		{ return resp_error; }
 };
 
 const char *int2str(int v,char *buf,int bufsiz);
