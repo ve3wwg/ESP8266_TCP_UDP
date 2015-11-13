@@ -23,12 +23,33 @@ correcting this deficiency by December 2015, when I am freed from
 other responsibilities.
 
 Another solution is to simply manually change the AP parameters using a
-terminal program. In this manner your AP will be secured when enabled;
+terminal program (or better, cmdesp below). In this manner your AP will
+be secured when enabled;
+
+The startup API is undergoing some changes. This is a quirky little
+device, so startup can be a problem.
 
 POSIX TESTING
 -------------
 
-There is a POSIX test program named posix.cpp that you can use to try
+In addition to the test command "posix", there is now a posix 
+command for more convenient manual access to your ESP8266 name
+cmdesp. This command includes command line editing and command
+recall. You'll never want to use putty again for manual ESP
+work.
+
+    $ ./cmdesp -h
+    Usage: cmdesp [-options..] [-v] [-h]
+    where options include:
+        -d device	Serial device pathname
+        -b baudrate     Baud rate for device
+        -v              Verbose output mode
+        -h              This help info.
+    
+    Use environment variables ESP8266_DEV to default device path
+    and ESP8266_BAUD for baud rate.
+
+Addtionally, a POSIX test program named posix.cpp can be used to try
 out the library before involving the MCU. First make the project:
 
     $ make 
