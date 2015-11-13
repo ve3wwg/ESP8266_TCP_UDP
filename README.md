@@ -395,14 +395,37 @@ was a choice.
 STARTUP ISSUES:
 ---------------
 
-Initially, I highly recommend that you always reset the device using
-esp.reset(), even following a MCU initiated hardware reset. A number of
-settings can be stored in the ESP device and re-established at reset
-time (like access point etc.) If you plan to exploit that, you may be
-able to just use esp.start() instead of the delay caused by reset.
+Originally, I had planned to provide startup methods for general use.
+However, the ESP device is finicky with several modes and variations
+depending upon firmware.  I gave up trying to handle all possibilities.
 
-If you expect to connect to the internet, make sure your WIFI AP is
-working first.
+I recommend that you use the "manual API" for getting your device 
+initialized the way you want it (do you want a reset, followed by 
+some other mode settings etc.) For UDP/TCP where sockets are involved,
+you need to have the AT+CIPMUX=1 (this is mode sensitive).
+
+MANUAL API:
+-----------
+
+The manual API is simple. You clear any special flags if necessary,
+issue the command and wait for OK. Any flags that are set like
+"WIFI CONNECTED" are already handled for you (returned with the
+method get_flag_wifi_connected() etc).
+
+The following is the general procedure using Reset:
+
+    1. Clear any flags you expect to see, for reset:
+       esp.clear_flag_ready();
+
+    2. Issue the command (like reset):
+       bool ok = esp.commandok("AT+RST");
+       ok is true if the command returned an OK.
+
+    3. Check your flag:
+
+       if ( esp.get_flag_ready() ) ...
+
+    See esp8266.hpp for the full set of flags.
 
 UNFINISHED BUSINESS:
 --------------------
