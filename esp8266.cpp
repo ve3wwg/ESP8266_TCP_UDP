@@ -479,7 +479,10 @@ ESP8266::reset(bool wait_wifi_connect) {
 //////////////////////////////////////////////////////////////////////
 
 bool
-ESP8266::start() {
+ESP8266::start(bool station,bool ap) {
+
+	en_station = station;			// Enable station mode
+	en_ap = ap;				// Enable access point
 
 	// Disable echo
 	CMD("ATE0");
@@ -487,22 +490,42 @@ ESP8266::start() {
 		command("ATE0");
 	} while ( !waitokfail() );
 
+	// Multi-sessioin mode enable
 	CMD("AT+CIPMUX=1");
 	command("AT+CIPMUX=1");
 	waitokfail();
 
-	get_version();
-
 	CMD("AT+CWJAP?");
 	// This will set wifi_connected = 0 if "No AP" message is seen
 	command("AT+CWJAP?");
+	waitokfail();
+
+	int cwmode = 0;
+
+	if ( !en_station && en_ap )
+		cwmode = 3;	// Both
+	else if ( en_station )
+		cwmode = 1;	// Station only (server)
+	else if ( en_ap )
+		cwmode = 2;	// Access point only
+
+	char m = '0' + cwmode;
+
+	CMDX("AT+CIPMODE=");
+	CMDC(m);
+	CMDC('\n');
+	write("AT+CIPMODE=");
+	writeb(m);
+	crlf();
+
 	if ( !waitokfail() )
 		return false;
 
-	if ( wifi_connected ) {
-		CMD("AT+CIPMODE=0");
-		command("AT+CIPMODE=0");
-		return waitokfail();
+	if ( en_ap ) {
+		while ( !wifi_connected ) {
+			receive();
+			idle();
+		}
 	}
 
 	return true;		// WIFI connected

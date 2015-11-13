@@ -24,6 +24,7 @@ static bool opt_verbose = false;
 static const char *opt_device = "/dev/cu.usbserial-A50285BI";
 static const char *opt_join = 0;
 static const char *opt_password = 0;
+static int opt_mode = 0;
 static bool opt_resume = false;
 static int opt_baudrate = 115200;
 static const char *opt_connect = 0;
@@ -172,6 +173,8 @@ usage(const char *cmd) {
 		"where options include:\n"
 		"\t-R\t\tBegin with ESP8266 reset\n"
 		"\t-W\t\tWait for WIFI CONNECT + GOT IP (with -R)\n"
+		"\t-r\t\tResume connection to last used WIFI\n"
+		"\t-m {1|2|3}\tStart in STA/AP/BOTH mode\n"
 		"\t-c host\t\tTCP host to connect to\n"
 		"\t-u host\t\tUDP host to send/recv with\n"
 		"\t-U port\t\tLocal UDP port (else assigned)\n"
@@ -180,7 +183,6 @@ usage(const char *cmd) {
 		"\t-d device\tSerial device pathname\n"
 		"\t-j wifi_name\tWIFI network to join\n"
 		"\t-P password\tWIFI passord (for -j)\n"
-		"\t-r\t\tResume connection to last used WIFI\n"
 		"\t-o file\t\tSend received output to file (default is stdout)\n"
 		"\t-D {0|1}\tDisable/Enable DHCP\n"
 		"\t-A ipaddr\tSet AP IP Address\n"
@@ -201,7 +203,7 @@ usage(const char *cmd) {
 
 int
 main(int argc,char **argv) {
-	static const char options[] = ":RWc:u:U:P:b:d:j:p:ro:D:A:S:T:L:Z:vh";
+	static const char options[] = ":RWc:u:U:P:b:d:j:p:rm:o:D:A:S:T:L:Z:vh";
 	int rc, optch, er = 0;
 
 	//////////////////////////////////////////////////////////////
@@ -212,6 +214,15 @@ main(int argc,char **argv) {
 		switch ( optch ) {
 		case 'R':
 			opt_reset = true;
+			break;
+		case 'r':
+			opt_resume = true;
+			opt_join = 0;
+			opt_password = 0;
+			opt_mode = 0;
+			break;
+		case 'm':
+			opt_mode = atoi(optarg);
 			break;
 		case 'W':
 			opt_wait_wifi = true;
@@ -243,11 +254,6 @@ main(int argc,char **argv) {
 		case 'P':
 			opt_resume = false;
 			opt_password = optarg;
-			break;
-		case 'r':
-			opt_resume = true;
-			opt_join = 0;
-			opt_password = 0;
 			break;
 		case 'o':
 			opt_output = optarg;
@@ -301,7 +307,7 @@ main(int argc,char **argv) {
 		exit(4);
 	}
 
-	if ( !(opt_join || opt_resume) )
+	if ( !(opt_join || opt_resume) && !opt_mode )
 		opt_resume = true;
 
 	//////////////////////////////////////////////////////////////
@@ -369,7 +375,7 @@ main(int argc,char **argv) {
 		esp.reset(opt_wait_wifi);
 		if ( opt_wait_wifi )
 			esp.wait_wifi(true);
-	} else	esp.start();
+	}
 
 	if ( opt_resume ) {
 		if ( !esp.is_wifi(false) ) {
@@ -380,15 +386,26 @@ main(int argc,char **argv) {
 			fprintf(stderr,"No IP number for AP (-r)\n");
 			exit(13);
 		}
-	} else if ( opt_join && opt_password ) {
-		if ( opt_verbose )
-			printf("Joining WIFI network -j %s\n",opt_join);
-		ok = esp.ap_join(opt_join,opt_password);
-		if ( opt_verbose || !ok )
-			fprintf(stderr,"WIFI %s (-j)\n",
-				ok ? "ok" : "failed");
-		if ( !ok )
-			exit(13);
+	} else	{
+		if ( opt_mode ) {
+			bool sta = !!(opt_mode & 1), ap = !!(opt_mode & 2);
+
+			if ( !esp.start(sta,ap) ) {
+				fprintf(stderr,"Start failed in mode %d\n",
+					opt_mode);
+				exit(13);
+			}
+		}
+		if ( opt_join && opt_password ) {
+			if ( opt_verbose )
+				printf("Joining WIFI network -j %s\n",opt_join);
+			ok = esp.ap_join(opt_join,opt_password);
+			if ( opt_verbose || !ok )
+				fprintf(stderr,"WIFI %s (-j)\n",
+					ok ? "ok" : "failed");
+			if ( !ok )
+				exit(13);
+		}
 	}
 
 	printf("Version: %s\n",esp.get_version());

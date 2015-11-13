@@ -91,6 +91,8 @@ private:
 	unsigned	send_ready : 1;		// When ready to accept send data
 	unsigned	send_ok : 1;		// After successful SEND
 	unsigned	send_fail : 1;		// After failed SEND
+	unsigned	en_ap : 1;		// Enable access point
+	unsigned	en_station : 1;		// Enable station (server) mode
 
 	void waitlf();				// Read bytes until LF
 	s_state *lookup(int sock);		// Lookup socket, else nullptr
@@ -110,7 +112,7 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	const char *strerror(Error err) const;		// Return text for error code
 
 	void reset(bool wait_wifi);			// Reset the ESP device (and optionally await wifi connect)
-	bool start();					// Set operational parameters (required if no reset)
+	bool start(bool station,bool ap);		// Set operational parameters (required if no reset)
 	void wait_wifi(bool got_ip);			// Wait for "WIFI CONNECTED" (optionally WIFI GOT IP)
 	bool is_wifi(bool got_ip);			// Return true if we have AP (optionally and IP)
 
