@@ -454,7 +454,7 @@ ESP8266::waitlf() {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Reset the ESP8266
+// (Software) Reset the ESP8266
 //////////////////////////////////////////////////////////////////////
 
 bool
@@ -473,6 +473,23 @@ ESP8266::reset() {
 		idle();		
 	}
 
+	return start();
+}
+
+//////////////////////////////////////////////////////////////////////
+// Here we assume that the ESP8266 pin has been activated and now
+// must wait for the reception of the "ready" message. Currently
+// this method waits forever if the ready message does not arrive.
+//////////////////////////////////////////////////////////////////////
+
+bool
+ESP8266::wait_reset() {
+
+	ready = 0;
+	while ( !ready ) {
+		receive();
+		idle();
+	}
 	return start();
 }
 

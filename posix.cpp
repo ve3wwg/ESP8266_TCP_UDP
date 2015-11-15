@@ -40,6 +40,7 @@ static int opt_timeout = -1;
 static int opt_listen = -1;
 static bool opt_reset = false;
 static bool opt_wait_wifi = false;
+static bool opt_Hardware_reset = false;
 
 static int fd = -1;
 static struct termios ios;
@@ -173,6 +174,7 @@ usage(const char *cmd) {
 		"where options include:\n"
 		"\t-R\t\tBegin with ESP8266 reset\n"
 		"\t-W\t\tWait for WIFI CONNECT + GOT IP (with -R)\n"
+		"\t-H\t\tWait for hardware reset\n"
 		"\t-r\t\tResume connection to last used WIFI\n"
 		"\t-m {1|2|3}\tStart in STA/AP/BOTH mode\n"
 		"\t-c host\t\tTCP host to connect to\n"
@@ -203,7 +205,7 @@ usage(const char *cmd) {
 
 int
 main(int argc,char **argv) {
-	static const char options[] = ":RWc:u:U:P:b:d:j:p:rm:o:D:A:S:T:L:Z:vh";
+	static const char options[] = ":RWc:u:U:P:b:d:j:p:rm:o:D:A:S:T:L:HZ:vh";
 	int rc, optch, er = 0;
 
 	//////////////////////////////////////////////////////////////
@@ -214,6 +216,11 @@ main(int argc,char **argv) {
 		switch ( optch ) {
 		case 'R':
 			opt_reset = true;
+			break;
+		case 'H':
+			opt_Hardware_reset = true;
+			opt_reset = false;
+			opt_resume = false;
 			break;
 		case 'r':
 			opt_resume = true;
@@ -307,7 +314,7 @@ main(int argc,char **argv) {
 		exit(4);
 	}
 
-	if ( !(opt_join || opt_resume) && !opt_mode )
+	if ( !(opt_join || opt_resume) && !opt_mode && !opt_Hardware_reset )
 		opt_resume = true;
 
 	//////////////////////////////////////////////////////////////
@@ -371,7 +378,14 @@ main(int argc,char **argv) {
 	// Initialize the device
 	//////////////////////////////////////////////////////////////
 
-	if ( opt_reset ) {
+	if ( opt_Hardware_reset ) {
+		if ( !esp.wait_reset() || !esp.start() ) {
+			fprintf(stderr,"Hardware reset failed.\n");
+			exit(13);
+		}
+		if ( opt_wait_wifi )
+			esp.wait_wifi(true);
+	} else if ( opt_reset ) {
 		if ( !esp.reset() ) {
 			fprintf(stderr,"Reset of device failed (-R)\n");
 			exit(13);
