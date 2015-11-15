@@ -301,12 +301,14 @@ depends upon the rpoll callback that you provided).
 ESP STARTUP:
 ------------
 
-    esp.reset(true);        // Resets ESP and waits for WIFI AP & IP
-    esp.reset(false);       // Resets ESP (and does not wait for AP IP)
+    esp.reset()         // Software reset of ESP device + start()
 
 otherwise use:
 
-    esp.start();            // Turns off echo etc. and otherwise initializes
+    esp.start();        // Turns off echo etc. and otherwise initializes
+
+Either of these can fail, if the mode is not already AT+CIPMODE=0, or
+it cannot be changed to that.
 
 JOINING AN AP:
 --------------
