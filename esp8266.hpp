@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 // esp8266.hpp -- ESP8266 Class
 // Date: Mon Oct 26 20:16:55 2015   (C) Warren Gay ve3wwg
 ///////////////////////////////////////////////////////////////////////
@@ -14,7 +14,8 @@ public:
 		Open = 0,
 		WPA_PSK = 1,
 		WPA2_PSK = 2,
-		WPA_WPA2_PSK = 3
+		WPA_WPA2_PSK = 3,
+		Ecn_Undefined
 	};	
 
 	enum IpGwMask {		// IP Info Types
@@ -67,7 +68,6 @@ private:
 	};
 
 	char		*version;		// Version info, else nullptr
-	char		*temp;			// Temporary buffer
 	s_bufs		*bufsp;			// Temp ptr for collecting info
 
 	s_state		state[N_CONNECTION];	// Sockets state
@@ -78,6 +78,8 @@ private:
 	short		resp_id;		// Response id in 0,CONNECT
 	short		s0;			// RX State
 	short		ss;			// RX Substate
+	short		channel;		// AP channel (CWJAP), when known (else -1)
+	short		strength;		// Strength (CWJAP), when known (else -1)
 
 	unsigned	ready : 1;		// Got "ready" after Reset
 	unsigned	wifi_connected : 1;	// WiFi connected
@@ -91,8 +93,6 @@ private:
 	unsigned	send_ready : 1;		// When ready to accept send data
 	unsigned	send_ok : 1;		// After successful SEND
 	unsigned	send_fail : 1;		// After failed SEND
-	unsigned	en_ap : 1;		// Enable access point
-	unsigned	en_station : 1;		// Enable station (server) mode
 
 	void waitlf();				// Read bytes until LF
 	s_state *lookup(int sock);		// Lookup socket, else nullptr
@@ -111,12 +111,15 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	inline const char *strerror() const	{ return strerror(error); }
 	const char *strerror(Error err) const;		// Return text for error code
 
+	inline int get_softap_channel() const	{ return channel; }
+	inline int get_softap_strength() const	{ return strength; }
+
 	void reset(bool wait_wifi);			// Reset the ESP device (and optionally await wifi connect)
-	bool start(bool station,bool ap);		// Set operational parameters (required if no reset)
+	bool start();					// Set operational parameters (required if no reset)
 	void wait_wifi(bool got_ip);			// Wait for "WIFI CONNECTED" (optionally WIFI GOT IP)
 	bool is_wifi(bool got_ip);			// Return true if we have AP (optionally and IP)
 
-	bool query_ap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& ecn);
+	bool query_softap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& ecn);
 
 	const char *get_version();			// Get ESP version
 	void release();					// Release any temp buffers (if possible)
@@ -128,6 +131,8 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	bool dhcp(bool on);				// Enable/disable DHCP
 
 	bool ap_join(const char *ap,const char *passwd); // Join Access Point
+
+	bool get_ap_ssid(char *ssid,int ssid_size,char *mac,int mac_size,int& chan,int& db);
 	bool get_ap_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nm,int nmsiz);
 	bool set_ap_addr(const char *ip_addr);		// Change access point IP address
 	bool get_ap_mac(char *mac,int macsiz);		// Get access point MAC address
