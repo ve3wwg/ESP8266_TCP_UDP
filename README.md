@@ -36,7 +36,7 @@ The best solution is to simply manually change the AP parameters using a
 terminal program (suggest you use cmdesp below). In this manner your AP will
 be secured when enabled:
 
-    use command AT+CWSAP="ssid","pw",chan,ecn 
+    AT+CWSAP="ssid","pw",chan,ecn 
 
 where ecn is 0=open/2=WPA_PSK/3=WPA2_PSK/4=WPA_WPA2_PSK.
 
