@@ -23,31 +23,27 @@ Check back periodically, to check progress.  It is my goal to replace
 this winded README with the Wiki pages.
 
 
-*** WARNING (TODO) ***
-----------------------
+*** AP WARNING ***
+------------------
 
 At the present time, this module turns on Access Point (AP) and Station
 mode. By default, the ESP device is configured for open access. So if
 your ESP joins your own WIFI, you will be exposing yourself to outside
-traffic.  If you're handy with C++, this is easily fixed.  I will be
-correcting this deficiency by December 2015, when I am freed from 
-other responsibilities.
+traffic.
 
-Another solution is to simply manually change the AP parameters using a
+The best solution is to simply manually change the AP parameters using a
 terminal program (or better, cmdesp below). In this manner your AP will
-be secured when enabled;
+be secured when enabled (use command AT+CWSAP="ssid","pw",chan,ecn where
+ecn is 0=open/2=WPA_PSK/3=WPA2_PSK/4=WPA_WPA2_PSK).
 
-The startup API is undergoing some changes. This is a quirky little
-device, so startup can be a problem.
 
-POSIX TESTING
--------------
+CMDESP
+------
 
-In addition to the test command "posix", there is now a posix 
-command for more convenient manual access to your ESP8266 name
-cmdesp. This command includes command line editing and command
-recall. You'll never want to use putty again for manual ESP
-work.
+In addition to the test command "posix", there is now a posix  command
+for more convenient manual access to your ESP8266 device named cmdesp.
+This command includes command line editing and command recall. You'll
+never want to use putty again for manual ESP work.
 
     $ ./cmdesp -h
     Usage: cmdesp [-options..] [-v] [-h]
@@ -60,8 +56,11 @@ work.
     Use environment variables ESP8266_DEV to default device path
     and ESP8266_BAUD for baud rate.
 
-Addtionally, a POSIX test program named posix.cpp can be used to try
-out the library before involving the MCU. First make the project:
+POSIX TEST
+----------
+
+A POSIX test program named posix.cpp can be used to try out the library
+before involving the MCU. First make the project:
 
     $ make 
 
