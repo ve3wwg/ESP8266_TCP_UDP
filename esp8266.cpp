@@ -51,7 +51,10 @@ ESP8266::clear(bool notify) {
 		s.rxcallback = 0;
 	}
 
-	first = 0;
+	channel = -1;		// Unknown
+	strength = -1;
+
+	first = '\n';
 
 	ready = 0;
 	wifi_connected = 0;
@@ -68,7 +71,6 @@ ESP8266::clear(bool notify) {
 	resp_dnsfail = 0;
 
 	version = 0;
-	temp = 0;
 	error = Ok;
 
 	accept_cb = 0;
@@ -124,11 +126,13 @@ ESP8266::read_buf(int bufx,char stop) {
 	char b;
 
 	while ( (b = readb()) != stop && b != '\r' ) {
-		if ( x + 1 >= maxlen )
+		if ( buf && x + 1 >= maxlen )
 			break;
-		buf[x++] = b;
+		if ( buf )
+			buf[x++] = b;
 	}
-	buf[x] = 0;
+	if ( buf )
+		buf[x] = 0;
 
 	return skip_until(b,stop);
 }	
@@ -192,7 +196,9 @@ ESP8266::receive() {
 
 	while ( rpoll() ) {
 		b = readb();
-
+#if DBG >= 3
+		printf("rx b='%c' %02X (first=%02X, s0=%d, ss=%d)\n",b,b,first,s0,ss);
+#endif
 		if ( b == '\n' ) {
 			first = '\n';
 			s0 = ss = 0;
@@ -279,14 +285,21 @@ ESP8266::receive() {
 					b = readb();
 					resp_id = b == '0' ? 0 : 1;
 					break;
-				case 0x0111:	// +CWJAP:"...
+				case 0x0111:	// +CWJAP:"NETGEAR67","c0:ff:d4:95:80:04",7,-66
 					wifi_connected = 1;
+					b = read_buf(0,'"');
+					b = skip_until(0,'"');
+					b = read_buf(1,'"');
+					b = skip_until(b,',');
+					b = read_buf(2,',');
+					b = read_buf(3,'\r');
 					break;
 				case 0x0102:	// "+CIPAP:ip:\""
 					b = read_buf(0,'"');
 					if ( !wifi_got_ip ) {
 						// Invoked by is_wifi(bool got_ip=true)
-						wifi_got_ip = strcmp(temp,"0.0.0.0") != 0;
+						if ( bufsp[0].buf )
+							wifi_got_ip = strcmp(bufsp[0].buf,"0.0.0.0") != 0;
 					}
 					break;
 				case 0x0112:	// "+CIPAP:gateway:\""
@@ -475,58 +488,26 @@ ESP8266::reset(bool wait_wifi_connect) {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Set operational parameters
+// Set operational parameters:
+//
+// This method simply turns off echo (ATE0) and makes certain that
+// we have AT+CIPMUX=1 mode established for TCP/UDP.
 //////////////////////////////////////////////////////////////////////
 
 bool
-ESP8266::start(bool station,bool ap) {
-
-	en_station = station;			// Enable station mode
-	en_ap = ap;				// Enable access point
+ESP8266::start() {
 
 	// Disable echo
 	CMD("ATE0");
-	do	{
-		command("ATE0");
-	} while ( !waitokfail() );
+	command("ATE0");
+	if ( !waitokfail() )
+		return false;
 
 	// Multi-sessioin mode enable
 	CMD("AT+CIPMUX=1");
 	command("AT+CIPMUX=1");
-	waitokfail();
-
-	CMD("AT+CWJAP?");
-	// This will set wifi_connected = 0 if "No AP" message is seen
-	command("AT+CWJAP?");
-	waitokfail();
-
-	int cwmode = 0;
-
-	if ( !en_station && en_ap )
-		cwmode = 3;	// Both
-	else if ( en_station )
-		cwmode = 1;	// Station only (server)
-	else if ( en_ap )
-		cwmode = 2;	// Access point only
-
-	char m = '0' + cwmode;
-
-	CMDX("AT+CIPMODE=");
-	CMDC(m);
-	CMDC('\n');
-	write("AT+CIPMODE=");
-	writeb(m);
-	crlf();
-
 	if ( !waitokfail() )
 		return false;
-
-	if ( en_ap ) {
-		while ( !wifi_connected ) {
-			receive();
-			idle();
-		}
-	}
 
 	return true;		// WIFI connected
 }
@@ -557,12 +538,9 @@ ESP8266::wait_wifi(bool got_ip) {
 
 bool
 ESP8266::is_wifi(bool got_ip) {
+	int ch, db;
 
-	// This will set wifi_connected = 0 if "No AP" message is seen
-
-	CMD("AT+CWJAP?");
-	command("AT+CWJAP?");
-	if ( !waitokfail() )
+	if ( !get_ap_ssid(0,0,0,0,ch,db) )
 		return false;
 
 	if ( !got_ip )
@@ -577,18 +555,10 @@ ESP8266::is_wifi(bool got_ip) {
 	// OK
 	//////////////////////////////////////////////////////////////
 
-	char ip[20], gw[20], nm[20];
-	s_bufs bufs[] = {
-		{ ip, sizeof ip },
-		{ gw, sizeof gw },
-		{ nm, sizeof nm }
-	};
+	char ip[32];
 
-	this->bufsp = bufs;
-
-	CMD("AT+CIPAP?");
-	command("AT+CIPAP?");
-	waitokfail();
+	if ( !get_ap_info(ip,sizeof ip,0,0,0,0) )
+		return false;
 
 	return wifi_got_ip;
 }
@@ -946,6 +916,40 @@ ESP8266::get_version() {
 }
 
 //////////////////////////////////////////////////////////////////////
+// This method returns the name (if any) of the joined Access Point.
+// Optionally, the mac address is also returned (set mac=0 to not
+// allocate a buffer). Finally, the channel and signal strength is
+// returned.
+//////////////////////////////////////////////////////////////////////
+
+bool
+ESP8266::get_ap_ssid(char *ssid,int ssid_size,char *mac,int mac_size,int& chan,int& db) {
+	// +CWJAP:"NETGEAR67","c0:ff:d4:95:80:04",7,-66
+	char chbuf[6], dbbuf[8];
+	s_bufs bufs[] = {
+		{ ssid, ssid_size },
+		{ mac, mac_size },
+		{ chbuf, sizeof chbuf },
+		{ dbbuf, sizeof dbbuf }
+	};
+
+	this->bufsp = bufs;
+
+	CMD("AT+CWJAP?");
+	command("AT+CWJAP?");
+	
+	if ( !waitokfail() ) {
+		this->bufsp = 0;
+		return false;
+	}
+
+	this->bufsp = 0;
+	this->channel = chan = str2int(chbuf);
+	this->strength = db = str2int(dbbuf);
+	return true;
+}
+
+//////////////////////////////////////////////////////////////////////
 // Request IP/Gateway and Netmask Info
 //////////////////////////////////////////////////////////////////////
 
@@ -956,12 +960,24 @@ ESP8266::get_ap_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nm,int nmsiz) {
 		{ gw, gwsiz },
 		{ nm, nmsiz }
 	};
+	bool ok;
 
 	this->bufsp = bufs;
 
 	CMD("AT+CIPAP?");
 	command("AT+CIPAP?");
-	return waitokfail();
+	ok = waitokfail();
+
+	if ( !ok ) {
+		if ( ip )
+			*ip = 0;
+		if ( gw )
+			*gw = 0;
+		if ( nm )
+			*nm = 0;
+	}
+
+	return ok;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -970,15 +986,12 @@ ESP8266::get_ap_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nm,int nmsiz) {
 
 bool
 ESP8266::get_station_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nmask,int nmasksiz) {
-	s_bufs bufs[3];
+	s_bufs bufs[3] = {
+		{ ip, ipsiz },
+		{ gw, gwsiz },
+		{ nmask, nmasksiz }
+	};
 	bool ok;
-
-	bufs[0].buf = ip;
-	bufs[0].bufsiz = ipsiz;
-	bufs[1].buf = gw;
-	bufs[1].bufsiz = gwsiz;
-	bufs[2].buf = nmask;
-	bufs[2].bufsiz = nmasksiz;
 
 	this->bufsp = bufs;
 
@@ -986,8 +999,15 @@ ESP8266::get_station_info(char *ip,int ipsiz,char *gw,int gwsiz,char *nmask,int 
 	command("AT+CIPSTA?");
 
 	ok = waitokfail();
-	if ( !ok )
+	if ( !ok ) {
 		error = Fail;
+		if ( ip )
+			*ip = 0;
+		if ( gw )
+			*gw = 0;
+		if ( nmask )
+			*nmask = 0;
+	}
 	return ok;
 }
 
@@ -1182,19 +1202,15 @@ ESP8266::dhcp(bool on) {
 //////////////////////////////////////////////////////////////////////
 
 bool
-ESP8266::query_ap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& ecn) {
-	struct s_bufs bufs[4];
+ESP8266::query_softap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& ecn) {
 	char chbuf[8], ecnbuf[8];
+	struct s_bufs bufs[4] = {
+		{ ssid, ssidsiz },
+		{ pw, pwsiz },
+		{ chbuf, sizeof chbuf },
+		{ ecnbuf, sizeof ecnbuf }
+	};
 	bool ok;
-
-	bufs[0].buf = ssid;
-	bufs[0].bufsiz = ssidsiz;
-	bufs[1].buf = pw;
-	bufs[1].bufsiz = pwsiz;
-	bufs[2].buf = chbuf;
-	bufs[2].bufsiz = sizeof chbuf;
-	bufs[3].buf = ecnbuf;
-	bufs[3].bufsiz = sizeof ecnbuf;
 
 	this->bufsp = bufs;
 
@@ -1205,7 +1221,15 @@ ESP8266::query_ap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& ecn)
 	if ( ok ) {
 		ch = str2int(chbuf);
 		ecn = AP_Ecn(str2int(ecnbuf));
-	} else	error = Fail;
+	} else	{
+		if ( ssid )
+			*ssid = 0;
+		if ( pw )
+			*pw = 0;
+		ch = -1;
+		ecn = Ecn_Undefined;
+		error = Fail;
+	}
 	this->bufsp = 0;
 	return ok;
 }
