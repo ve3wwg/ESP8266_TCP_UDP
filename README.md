@@ -22,20 +22,23 @@ Wiki documentation has been started, but is work in progress:
 Check back periodically, to check progress.  It is my goal to replace
 this winded README with the Wiki pages.
 
-
 *** AP WARNING ***
 ------------------
 
-At the present time, this module turns on Access Point (AP) and Station
-mode. By default, the ESP device is configured for open access. So if
-your ESP joins your own WIFI, you will be exposing yourself to outside
-traffic.
+At the present time, this module assumes Access Point (AP) is enabled in
+order to allow TCP connections. 
+
+  By default, the ESP device is configured for open access. So if
+  your ESP joins your own WIFI, you are exposing yourself to 
+  outside traffic.
 
 The best solution is to simply manually change the AP parameters using a
-terminal program (or better, cmdesp below). In this manner your AP will
-be secured when enabled (use command AT+CWSAP="ssid","pw",chan,ecn where
-ecn is 0=open/2=WPA_PSK/3=WPA2_PSK/4=WPA_WPA2_PSK).
+terminal program (suggest you use cmdesp below). In this manner your AP will
+be secured when enabled:
 
+    use command AT+CWSAP="ssid","pw",chan,ecn 
+
+where ecn is 0=open/2=WPA_PSK/3=WPA2_PSK/4=WPA_WPA2_PSK.
 
 CMDESP
 ------
