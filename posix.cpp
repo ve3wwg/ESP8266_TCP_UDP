@@ -386,15 +386,14 @@ main(int argc,char **argv) {
 			fprintf(stderr,"No IP number for AP (-r)\n");
 			exit(13);
 		}
+		if ( !esp.start() ) {
+			fprintf(stderr,"Unable start()\n");
+			exit(13);
+		}
 	} else	{
-		if ( opt_mode ) {
-			bool sta = !!(opt_mode & 1), ap = !!(opt_mode & 2);
-
-			if ( !esp.start(sta,ap) ) {
-				fprintf(stderr,"Start failed in mode %d\n",
-					opt_mode);
-				exit(13);
-			}
+		if ( !esp.start() ) {
+			fprintf(stderr,"Start failed.\n");
+			exit(13);
 		}
 		if ( opt_join && opt_password ) {
 			if ( opt_verbose )
@@ -416,7 +415,7 @@ main(int argc,char **argv) {
 		int chan;
 		ESP8266::AP_Ecn ecn;
 
-		ok = esp.query_ap(ssid,sizeof ssid,password,sizeof password,chan,ecn);
+		ok = esp.query_softap(ssid,sizeof ssid,password,sizeof password,chan,ecn);
 		if ( ok )
 			printf("AP: ssid='%s', password='%s', chan=%d, ecn=%d\n",
 				ssid,password,chan,int(ecn));
