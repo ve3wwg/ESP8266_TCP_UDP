@@ -173,6 +173,7 @@ ESP8266::receive() {
 		{ "+CIPAP:netmask:\"",	7,	0x0122 },
 		{ "+CIPAPMAC:\"", 	6,	0x0103 },
 		{ "+CIPSTA:ip:\"",	4,	0x0104 },
+		{ "+CIPMODE:",		4,	0x0107 },
 		{ "+CIPSTA:gateway:\"",	8,	0x0114 },
 		{ "+CIPSTA:netmask:\"",	8,	0x0124 },
 		{ "+CIPSTAMAC:\"", 	7,	0x0105 },
@@ -337,6 +338,9 @@ ESP8266::receive() {
 				case 0x0106:	// +CIPSTO:
 					b = read_id();
 					break;
+				case 0x0107:	// +CIPMODE:0
+					b = read_id();
+					break;
 				case 0x0200:	// "OK",
 					resp_ok = 1;
 					break;
@@ -453,8 +457,8 @@ ESP8266::waitlf() {
 // Reset the ESP8266
 //////////////////////////////////////////////////////////////////////
 
-void
-ESP8266::reset(bool wait_wifi_connect) {
+bool
+ESP8266::reset() {
 
 	receive();
 
@@ -469,29 +473,14 @@ ESP8266::reset(bool wait_wifi_connect) {
 		idle();		
 	}
 
-	// Disable echo
-	CMD("ATE0");
-	do	{
-		command("ATE0");
-	} while ( !waitokfail() );
-
-	if ( wait_wifi_connect )
-		wait_wifi(true);	// Wait until WIFI CONNECT; WIFI GOT IP messages appear
-
-	CMD("AT+CIPMODE=0");
-	command("AT+CIPMODE=0");
-	waitokfail();			// Ignore status for now
-
-	CMD("AT+CIPMUX=1");
-	command("AT+CIPMUX=1");
-	waitokfail();
+	return start();
 }
 
 //////////////////////////////////////////////////////////////////////
 // Set operational parameters:
 //
-// This method simply turns off echo (ATE0) and makes certain that
-// we have AT+CIPMUX=1 mode established for TCP/UDP.
+// This method simply turns off echo (ATE0), sets AT+CIPMODE=0 and
+// makes certain that we have AT+CIPMUX=1 mode established for TCP/UDP.
 //////////////////////////////////////////////////////////////////////
 
 bool
@@ -501,6 +490,9 @@ ESP8266::start() {
 	CMD("ATE0");
 	command("ATE0");
 	if ( !waitokfail() )
+		return false;
+
+	if ( !set_cipmode(0) )	// Check/set AT+CIPMODE=0
 		return false;
 
 	// Multi-sessioin mode enable
@@ -1182,6 +1174,51 @@ ESP8266::dhcp(bool on) {
 	write(on ? "1" : "0");
 	crlf();
 
+	return waitokfail();
+}
+
+//////////////////////////////////////////////////////////////////////
+// Get the response to AT+CIPMODE?
+//////////////////////////////////////////////////////////////////////
+
+int
+ESP8266::get_cipmode() {
+
+	CMD("AT+CIPMODE?");
+	command("AT+CIPMODE?");
+	if ( !waitokfail() ) {
+		error = Fail;
+		return -1;
+	}
+	return resp_id;
+}
+
+//////////////////////////////////////////////////////////////////////
+// Check/set the AT+CIPMODE=n (0 == normal, 1 == "unvarnished")
+//
+// Note:
+//	Setting this option can only be done in certain "modes".
+//	To avoid getting the message:
+//
+//	CIPMUX and CIPSERVER must be 0
+//	ERROR
+//
+//	we check it first. If the mode agrees, we can return ok.
+//	If it differs, then we must make the attempt to set it.
+//////////////////////////////////////////////////////////////////////
+
+bool
+ESP8266::set_cipmode(int mode) {
+
+	if ( get_cipmode() == mode )
+		return true;
+
+	char buf[12];
+	const char *cp = int2str(mode,buf,sizeof buf);
+	CMDX("AT+CIPMODE=");
+	CMD(cp);
+	write("AT+CIPMODE=");
+	command(cp);
 	return waitokfail();
 }
 
