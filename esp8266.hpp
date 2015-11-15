@@ -165,6 +165,8 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 
 	int get_cipmode();				// AT+CIPMODE?
 	bool set_cipmode(int mode);			// AT+CIPMODE={0|1}
+	int get_cipmux();				// AT+CIPMUX?
+	bool set_cipmux(int mode);			// AT+CIPMUX={0|1}
 
 	//////////////////////////////////////////////////////////////
 	// The "manual" API

@@ -174,6 +174,7 @@ ESP8266::receive() {
 		{ "+CIPAPMAC:\"", 	6,	0x0103 },
 		{ "+CIPSTA:ip:\"",	4,	0x0104 },
 		{ "+CIPMODE:",		4,	0x0107 },
+		{ "+CIPMUX",		5,	0x0108 },
 		{ "+CIPSTA:gateway:\"",	8,	0x0114 },
 		{ "+CIPSTA:netmask:\"",	8,	0x0124 },
 		{ "+CIPSTAMAC:\"", 	7,	0x0105 },
@@ -339,6 +340,7 @@ ESP8266::receive() {
 					b = read_id();
 					break;
 				case 0x0107:	// +CIPMODE:0
+				case 0x0108:	// +CIPMUX:1
 					b = read_id();
 					break;
 				case 0x0200:	// "OK",
@@ -512,10 +514,7 @@ ESP8266::start() {
 	if ( !set_cipmode(0) )	// Check/set AT+CIPMODE=0
 		return false;
 
-	// Multi-sessioin mode enable
-	CMD("AT+CIPMUX=1");
-	command("AT+CIPMUX=1");
-	if ( !waitokfail() )
+	if ( !set_cipmux(1) )	// Check/set AT+CIPMUX=1
 		return false;
 
 	return true;		// WIFI connected
@@ -1235,6 +1234,45 @@ ESP8266::set_cipmode(int mode) {
 	CMDX("AT+CIPMODE=");
 	CMD(cp);
 	write("AT+CIPMODE=");
+	command(cp);
+	return waitokfail();
+}
+
+//////////////////////////////////////////////////////////////////////
+// Get the AT+CIPMUX? mode
+// 
+// AT+CIPMUX?
+// +CIPMUX:1
+// OK
+//////////////////////////////////////////////////////////////////////
+
+int
+ESP8266::get_cipmux() {
+
+	CMD("AT+CIPMUX?");
+	command("AT+CIPMUX?");
+	if ( !waitokfail() ) {
+		error = Fail;
+		return -1;
+	}
+	return resp_id;
+}
+
+//////////////////////////////////////////////////////////////////////
+// AT+CIPMUX=<mode>
+//////////////////////////////////////////////////////////////////////
+
+bool
+ESP8266::set_cipmux(int mode) {
+
+	if ( get_cipmux() == mode )	// Avoid setting, if state matches
+		return true;
+
+	char buf[12];
+	const char *cp = int2str(mode,buf,sizeof buf);
+	CMDX("AT+CIPMUX=");
+	CMD(cp);
+	write("AT+CIPMUX=");
 	command(cp);
 	return waitokfail();
 }
