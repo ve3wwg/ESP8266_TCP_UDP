@@ -114,7 +114,7 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	inline int get_softap_channel() const	{ return channel; }
 	inline int get_softap_strength() const	{ return strength; }
 
-	void reset(bool wait_wifi);			// Reset the ESP device (and optionally await wifi connect)
+	bool reset();					// Reset the ESP device (and optionally await wifi connect)
 	bool start();					// Set operational parameters (required if no reset)
 	void wait_wifi(bool got_ip);			// Wait for "WIFI CONNECTED" (optionally WIFI GOT IP)
 	bool is_wifi(bool got_ip);			// Return true if we have AP (optionally and IP)
