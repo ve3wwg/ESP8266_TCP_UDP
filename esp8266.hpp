@@ -137,6 +137,7 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	bool set_ap_addr(const char *ip_addr);		// Change access point IP address
 	bool get_ap_mac(char *mac,int macsiz);		// Get access point MAC address
 	bool set_ap_mac(const char *mac_addr);		// Set access point MAC address
+
 	int get_autoconn();				// Get access point auto-connect setting
 	bool set_autoconn(bool on);			// Set access point auto-connect setting
 
@@ -151,12 +152,12 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	void accept(int socket,recv_func_t recv_cb);	// Accept a connection, set recv callback
 	bool unlisten();				// Close station listening port
 
-	void receive();					// Receiving state machine
-
 	int tcp_connect(const char *host,int port,recv_func_t rx_cb);	// Connect to TCP destination with recv callback
 	int udp_socket(const char *host,int port,recv_func_t rx_cb,int local_port=-1);	// Create UDP socket to send to host at port, with recv callback
 	int write(int sock,const char *data,int bytes,const char *udp_address=0); // Write to TCP/UDP connection (optionally to a different UDP address)
 	bool close(int sock);						// Close TCP connection
+
+	void receive();					// Receiving state machine
 
 	//////////////////////////////////////////////////////////////
 	// Intermediate API
