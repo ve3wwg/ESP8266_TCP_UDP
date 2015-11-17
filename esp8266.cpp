@@ -83,7 +83,6 @@ ESP8266::clear(bool notify) {
 //////////////////////////////////////////////////////////////////////
 
 ESP8266::~ESP8266() {
-	release();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -393,26 +392,7 @@ ESP8266::receive() {
 					wifi_got_ip = 1;
 					break;
 				case 0x0800:	// "AT version:",
-					if ( version )
-						free(version);
-					version = (char *)malloc(80);
-					for ( ss=0; ss + 1 < 80; ++ss ) {
-						b = readb();
-						if ( b == '\r' )
-							break;
-						version[ss] = b;
-					}
-					version[ss] = 0;
-					// Now read until we get OK
-					for (;;) {
-						while ( (b = readb()) != '\n' );
-						if ( readb() != 'O' )
-							continue;
-						if ( readb() != 'K' )
-							continue;
-						if ( readb() == '\r' )
-							break;
-					}
+					b = read_buf(0,'\r');
 					first = 0;
 					break;
 				case 0x0900:	// No AP
@@ -901,26 +881,34 @@ ESP8266::write(int sock,const char *data,int bytes,const char *udp_address) {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Return ESP8266 Version Info
+// Return ESP8266 Version Info (only the AT version line is returned)
+//
+// AT+GMR
+// AT version:0.25.0.0(Jun  5 2015 16:27:16)
+// SDK version:1.1.1
+// Ai-Thinker Technology Co. Ltd.
+// Jun 23 2015 23:23:50
+// OK
 //////////////////////////////////////////////////////////////////////
 
-const char *
-ESP8266::get_version() {
+bool
+ESP8266::get_version(char *buf,int bufsiz) {
+	s_bufs bufs[] = {
+		{ buf, bufsiz }
+	};
 
-	if ( version ) {
-		free(version);
-		version = 0;
-	}
+	this->bufsp = bufs;
 
 	CMD("AT+GMR");	
 	command("AT+GMR");
-	do	{
-		receive();
-		if ( !version )
-			idle();
-	} while ( !version );
+	if ( !waitokfail() ) {
+		*buf = 0;
+		return false;
+	}
 
-	return version;
+	this->bufsp = 0;
+
+	return true;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1349,18 +1337,6 @@ ESP8266::query_softap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& 
 //
 // OK
 //////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////
-// Release any unessential storage
-//////////////////////////////////////////////////////////////////////
-
-void
-ESP8266::release() {
-	if ( version ) {
-		free(version);
-		version = 0;
-	}
-}
 
 //////////////////////////////////////////////////////////////////////
 // Return text for Error code
