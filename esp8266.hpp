@@ -122,8 +122,7 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 
 	bool query_softap(char *ssid,int ssidsiz,char *pw,int pwsiz,int& ch,AP_Ecn& ecn);
 
-	const char *get_version();			// Get ESP version
-	void release();					// Release any temp buffers (if possible)
+	bool get_version(char *buf,int bufsiz);		// Return ESP version
 
 	void crlf();					// Write CR LF to ESP device
 	void write(const char *str);			// Write string to ESP device
