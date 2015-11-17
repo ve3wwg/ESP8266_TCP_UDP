@@ -424,8 +424,13 @@ main(int argc,char **argv) {
 		}
 	}
 
-	printf("Version: %s\n",esp.get_version());
-	esp.release();
+	{
+		char vers[60];
+
+		if ( esp.get_version(vers,sizeof vers) )
+			printf("Version: %s\n",vers);
+		else	puts("NO VERSION INFO.");
+	}
 
 	{
 		char ssid[32], password[64];
