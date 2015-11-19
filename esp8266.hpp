@@ -156,6 +156,7 @@ public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_fun
 	int udp_socket(const char *host,int port,recv_func_t rx_cb,int local_port=-1);	// Create UDP socket to send to host at port, with recv callback
 	int write(int sock,const char *data,int bytes,const char *udp_address=0); // Write to TCP/UDP connection (optionally to a different UDP address)
 	bool close(int sock);						// Close TCP connection
+	void close_all();
 
 	void receive();					// Receiving state machine
 

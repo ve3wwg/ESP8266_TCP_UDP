@@ -12,7 +12,7 @@
 
 #include "esp8266.hpp"
 
-#define DBG 	2
+#define DBG 	0
 
 #if DBG
 #define RX(x) printf("RX(%c)\n",x)
@@ -422,6 +422,7 @@ ESP8266::receive() {
 			else	++ss;
 		}
 	}
+	idle();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -450,10 +451,8 @@ ESP8266::reset() {
 	CMD("AT+RST");
 	command("AT+RST");
 
-	while ( !ready ) {
+	while ( !ready )
 		receive();
-		idle();		
-	}
 
 	return start();
 }
@@ -468,10 +467,8 @@ bool
 ESP8266::wait_reset() {
 
 	ready = 0;
-	while ( !ready ) {
+	while ( !ready )
 		receive();
-		idle();
-	}
 	return start();
 }
 
@@ -497,6 +494,8 @@ ESP8266::start() {
 	if ( !set_cipmux(1) )	// Check/set AT+CIPMUX=1
 		return false;
 
+	close_all();
+
 	return true;		// WIFI connected
 }
 
@@ -509,13 +508,11 @@ ESP8266::wait_wifi(bool got_ip) {
 
 	do	{
 		receive();
-		idle();
 	} while ( !wifi_connected );
 
 	if ( got_ip ) {
 		do	{
 			receive();
-			idle();
 		} while ( !wifi_got_ip );
 	}
 }
@@ -633,8 +630,6 @@ ESP8266::waitokfail() {
 
 	do	{
 		receive();
-		if ( !resp_fail && !resp_ok && !resp_error )
-			idle();
 	} while ( !resp_fail && !resp_ok && !resp_error );
 
 	return resp_ok;
@@ -727,8 +722,6 @@ ESP8266::socket(const char *socktype,const char *host,int port,recv_func_t rx_cb
 			s.open = 0;
 			return -1;
 		}
-		if ( !resp_ok )
-			idle();
 	} while ( !resp_ok );
 
 	s.connected = 1;
@@ -788,6 +781,18 @@ ESP8266::close(int sock) {
 	else	statep->open = 0;	// Closed
 
 	return ok;
+}
+
+//////////////////////////////////////////////////////////////////////
+// Close all sockets (ignoring errors)
+//////////////////////////////////////////////////////////////////////
+
+void
+ESP8266::close_all() {
+	for ( int s=0; s<N_CONNECTION; ++s ) {
+		close(s);			// Attempt to close on ESP side
+		state[s].open = 0;		// Force close on our side
+	}
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -852,8 +857,6 @@ ESP8266::write(int sock,const char *data,int bytes,const char *udp_address) {
 
 		do	{
 			receive();
-			if ( !send_ready )
-				idle();
 		} while ( !send_ready );
 
 		first = 0;
@@ -863,8 +866,6 @@ ESP8266::write(int sock,const char *data,int bytes,const char *udp_address) {
 
 		do	{
 			receive();
-			if ( !(send_ok || send_fail) )
-				idle();
 		} while ( !(send_ok || send_fail) );
 
 		if ( send_fail )
