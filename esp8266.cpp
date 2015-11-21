@@ -422,7 +422,8 @@ ESP8266::receive() {
 			else	++ss;
 		}
 	}
-	idle();
+	if ( idle )
+		idle();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -443,7 +444,7 @@ ESP8266::waitlf() {
 bool
 ESP8266::reset() {
 
-	receive();
+	YIELD();
 
 	// Reset
 	ready = 0;
@@ -452,7 +453,7 @@ ESP8266::reset() {
 	command("AT+RST");
 
 	while ( !ready )
-		receive();
+		YIELD();
 
 	return start();
 }
@@ -468,7 +469,7 @@ ESP8266::wait_reset() {
 
 	ready = 0;
 	while ( !ready )
-		receive();
+		YIELD();
 	return start();
 }
 
@@ -507,12 +508,12 @@ void
 ESP8266::wait_wifi(bool got_ip) {
 
 	do	{
-		receive();
+		YIELD();
 	} while ( !wifi_connected );
 
 	if ( got_ip ) {
 		do	{
-			receive();
+			YIELD();
 		} while ( !wifi_got_ip );
 	}
 }
@@ -629,7 +630,7 @@ ESP8266::waitokfail() {
 	resp_ok = resp_fail = resp_error = 0;
 
 	do	{
-		receive();
+		YIELD();
 	} while ( !resp_fail && !resp_ok && !resp_error );
 
 	return resp_ok;
@@ -656,7 +657,7 @@ ESP8266::socket(const char *socktype,const char *host,int port,recv_func_t rx_cb
 		return -1;		// No free sessions
 	}
 
-	receive();
+	YIELD();
 
 	s_state& s = state[sock];
 
@@ -714,7 +715,7 @@ ESP8266::socket(const char *socktype,const char *host,int port,recv_func_t rx_cb
 	crlf();
 
 	do	{
-		receive();
+		YIELD();
 		if ( resp_error ) {
 			if ( resp_dnsfail )
 				error = DNS_Fail;
@@ -856,7 +857,7 @@ ESP8266::write(int sock,const char *data,int bytes,const char *udp_address) {
 		}
 
 		do	{
-			receive();
+			YIELD();
 		} while ( !send_ready );
 
 		first = 0;
@@ -865,7 +866,7 @@ ESP8266::write(int sock,const char *data,int bytes,const char *udp_address) {
 			writeb(*data++);
 
 		do	{
-			receive();
+			YIELD();
 		} while ( !(send_ok || send_fail) );
 
 		if ( send_fail )
