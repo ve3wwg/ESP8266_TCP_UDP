@@ -6,7 +6,18 @@
 #ifndef ESP8266_HPP
 #define ESP8266_HPP
 
+#ifndef N_CONNECTION
 #define N_CONNECTION	5
+#endif
+
+#ifdef USING_RTOS
+extern "C" {
+	void yield();
+}
+#define YIELD	yield
+#else
+#define YIELD	receive
+#endif
 
 class ESP8266 {
 public:
@@ -103,7 +114,7 @@ private:
 
 	int socket(const char *socktype,const char *host,int port,recv_func_t rx_cb,int local_port=-1);
 
-public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_func_t idle);
+public:	ESP8266(write_func_t writeb,read_func_t readb,poll_func_t rpoll,idle_func_t idle);	// Non RTOS constructor
 	~ESP8266();
 	void clear(bool notify);		// Clear like the constructor (after reset)
 
