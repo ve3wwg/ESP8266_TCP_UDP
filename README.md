@@ -12,6 +12,10 @@ using a FTDI (or similar) usb serial cable from Linux/*BSD/Mac OSX. You
 can easily take the esp8266.hpp/cpp source code and plunk it into your
 AVR or ARM MCU project.
 
+The ESP8266 class can be made to operate in single-thread or 
+as mbed RTOS threads. For an RTOS example, run under POSIX, see
+the program ntp_rtos.cpp.
+
 WIKI
 ----
 
