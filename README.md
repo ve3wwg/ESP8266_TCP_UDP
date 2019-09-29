@@ -22,7 +22,7 @@ WIKI
 Wiki documentation is now online. It will likely be refined further
 over the course of time:
 
-   https://github.com/ve3wwg/ESP8266/wiki
+   https://github.com/ve3wwg/ESP8266_TCP_UDP/wiki
 
 
 *** AP WARNING ***
